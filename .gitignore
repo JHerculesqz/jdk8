@@ -1,0 +1,4 @@
+langtools/src/share/.idea/
+langtools/src/share/out/
+langtools/src/share/share.iml
+langtools/src/share/classes/com/sun/tools/javactest/JavacTest.class
