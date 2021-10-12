@@ -36,6 +36,10 @@ public class Main {
 
     /** Main entry point for the launcher.
      *  Note: This method calls System.exit.
+     *
+     *  HCZ：
+     *  javac的入口
+     *
      *  @param args command line arguments
      */
     public static void main(String[] args) throws Exception {
@@ -44,6 +48,10 @@ public class Main {
 
     /** Programmatic interface to the Java Programming Language
      * compiler, javac.
+     *
+     * HCZ：
+     * 被Main调用
+     * 被CreateSymbols调用，但CreateSymbols是干啥的呢？
      *
      * @param args The command line arguments that would normally be
      * passed to the javac program as described in the man page.
@@ -60,6 +68,9 @@ public class Main {
 
     /** Programmatic interface to the Java Programming Language
      * compiler, javac.
+     *
+     * HCZ：
+     * 被JavacTool调用，但JavacTool是干啥的？
      *
      * @param args The command line arguments that would normally be
      * passed to the javac program as described in the man page.

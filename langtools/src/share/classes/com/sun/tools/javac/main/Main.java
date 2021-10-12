@@ -68,20 +68,33 @@ import static com.sun.tools.javac.main.Option.*;
 public class Main {
 
     /** The name of the compiler, for use in diagnostics.
+     * HCZ：
+     * 调用本类的构造函数时创建or传入的
+     * 其实就是javac
      */
     String ownName;
 
     /** The writer to use for diagnostic output.
+     * HCZ：
+     * 调用本类的构造函数时创建or传入的
+     * 如：System.err的PrintWriter包装
      */
     PrintWriter out;
 
     /** The log to use for diagnostic output.
+     * HCZ：
+     * 调用本类的构造函数时创建or传入的
+     * 就是Log工具类的实例
      */
     public Log log;
 
     /**
      * If true, certain errors will cause an exception, such as command line
      * arg errors, or exceptions in user provided code.
+     *
+     * HCZ：
+     * 这个属性的作用就是在api模式下抛异常——JavacTaskImpl会调用setAPIMode，进而更新这个属性=true
+     * javac命令行正常调用，此属性永远是false
      */
     boolean apiMode;
 
@@ -106,9 +119,18 @@ public class Main {
         public final int exitCode;
     }
 
+    /**
+     * HCZ:
+     * 将Option枚举类的枚举值变成Option[]存下来
+     * 这些Option元素都是javac支持的合法的命令行配置参数
+     */
     private Option[] recognizedOptions =
             Option.getJavaCompilerOptions().toArray(new Option[0]);
 
+    /**
+     * HCZ：
+     * 实现OptionHelper抽象类
+     */
     private OptionHelper optionHelper = new OptionHelper() {
         @Override
         public String get(Option option) {
@@ -154,6 +176,7 @@ public class Main {
 
     /**
      * Construct a compiler instance.
+     * HCZ:X
      */
     public Main(String name) {
         this(name, new PrintWriter(System.err, true));
@@ -161,24 +184,38 @@ public class Main {
 
     /**
      * Construct a compiler instance.
+     * HCZ:X
      */
     public Main(String name, PrintWriter out) {
         this.ownName = name;
         this.out = out;
     }
 
-    /** A table of all options that's passed to the JavaCompiler constructor.  */
+    /** A table of all options that's passed to the JavaCompiler constructor.
+     * HCZ：
+     * 用户实际输入的命令行配置参数，
+     * 都是在本类的调用方初始化的，初始化都是用的Options.instance(context)
+     */
     private Options options = null;
 
     /** The list of source files to process
+     * HCZ：
+     * 持有本类实例的调用方，直接给给此属性初始化，初始化为LinkedHashSet<File>
+     * 然后通过本类的optionHelper属性重载的addFile方法将javac跟着的文件列表加入到本属性中。
      */
     public Set<File> filenames = null; // XXX sb protected
 
     /** List of class files names passed on the command line
+     *
+     * 在Main#compile方法中，将此属性初始化为ListBuffer<String>，
+     * 在Main#processArgs方法中，给此属性添加javac跟着的文件列表中对应的ClassName列表。
+     * 在Main#optionHelper属性重载的addClassName方法将javac跟着的文件列表加入到本属性中。
      */
     public ListBuffer<String> classnames = null; // XXX sb protected
 
     /** Report a usage error.
+     * HCZ:
+     * 封装了log对象，记录错误日志，给Main类调用
      */
     void error(String key, Object... args) {
         if (apiMode) {
@@ -190,11 +227,18 @@ public class Main {
     }
 
     /** Report a warning.
+     * HCZ：
+     * 封装了log对象，记录warning日志，给Main类调用
      */
     void warning(String key, Object... args) {
         log.printRawLines(ownName + ": " + log.localize(PrefixKind.JAVAC, key, args));
     }
 
+    /**
+     * HCZ:X
+     * @param flag
+     * @return
+     */
     public Option getOption(String flag) {
         for (Option option : recognizedOptions) {
             if (option.matches(flag))
@@ -203,12 +247,20 @@ public class Main {
         return null;
     }
 
+    /**
+     * HCZ:X
+     * @param options
+     */
     public void setOptions(Options options) {
         if (options == null)
             throw new NullPointerException();
         this.options = options;
     }
 
+    /**
+     * HCZ:X
+     * @param apiMode
+     */
     public void setAPIMode(boolean apiMode) {
         this.apiMode = apiMode;
     }
@@ -335,7 +387,7 @@ public class Main {
 
         return filenames;
     }
-    // where
+    // where   HCZ：检查需要用到文件的Option中的文件路径是否存在
         private boolean checkDirectory(Option option) {
             String value = options.get(option);
             if (value == null)
@@ -582,6 +634,8 @@ public class Main {
     }
 
     /** Print a message reporting an internal error.
+     * HCZ:
+     * 封装了log对象，记录bug日志，给Main类调用
      */
     void bugMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.bug", JavaCompiler.version());
@@ -589,6 +643,8 @@ public class Main {
     }
 
     /** Print a message reporting a fatal error.
+     * HCZ：
+     * 封装了log对象，记录fatal日志，给Main类调用
      */
     void feMessage(Throwable ex) {
         log.printRawLines(ex.getMessage());
@@ -598,6 +654,8 @@ public class Main {
     }
 
     /** Print a message reporting an input/output error.
+     * HCZ：
+     * 封装了log对象，记录io日志，给Main类调用
      */
     void ioMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.io");
@@ -605,6 +663,8 @@ public class Main {
     }
 
     /** Print a message reporting an out-of-resources error.
+     * HCZ:
+     * 封装了log对象，记录资源错误日志，给Main类调用
      */
     void resourceMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.resource");
@@ -613,6 +673,8 @@ public class Main {
 
     /** Print a message reporting an uncaught exception from an
      * annotation processor.
+     * HCZ：
+     * 封装了log对象，记录注解异常日志，给Main类调用
      */
     void apMessage(AnnotationProcessingError ex) {
         log.printLines(PrefixKind.JAVAC, "msg.proc.annotation.uncaught.exception");
@@ -621,13 +683,19 @@ public class Main {
 
     /** Print a message reporting an uncaught exception from an
      * annotation processor.
+     * HCZ：
+     * 封装了log对象，记录-Xplugin对应的plugin错误日志，给Main类调用
      */
     void pluginMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.plugin.uncaught.exception");
         ex.printStackTrace(log.getWriter(WriterKind.NOTICE));
     }
 
-    /** Display the location and checksum of a class. */
+    /** Display the location and checksum of a class.
+     * HCZ：
+     * 打印指定类的.class文件路径和MD5.checksum
+     * 啥时候用到？
+     */
     void showClass(String className) {
         PrintWriter pw = log.getWriter(WriterKind.NOTICE);
         pw.println("javac: show class: " + className);
@@ -659,6 +727,10 @@ public class Main {
         }
     }
 
+    /**
+     * HCZ:
+     * javac内部实现的File管理工具类
+     */
     private JavaFileManager fileManager;
 
     /* ************************************************************************
@@ -692,6 +764,9 @@ public class Main {
 //        }
 //    }
 
+    /**
+     * HCZ:X
+     */
     public static final String javacBundleName =
         "com.sun.tools.javac.resources.javac";
 //
