@@ -100,6 +100,8 @@ public class Main {
 
 
     /** Result codes.
+     * HCZ：
+     * Main#compile的编译结果数据结构，仅仅表达编译成功or失败
      */
     public enum Result {
         OK(0),        // Compilation completed with no errors.
@@ -267,9 +269,12 @@ public class Main {
 
     /** Process command line arguments: store all command line options
      *  in `options' table and return all source filenames.
+     *  HCZ：
+     *  参数的处理函数，没啥好仔细阅读的，debug一下就明白了。
+     *
      *  @param flags    The array of command line arguments.
      */
-    public Collection<File> processArgs(String[] flags) { // XXX sb protected
+    public Collection<File> processArgs(String[] flags) { // XXX sb protected  HCZ：你骂人？！
         return processArgs(flags, null);
     }
 
@@ -408,9 +413,13 @@ public class Main {
      * @param args    The command line parameters.
      */
     public Result compile(String[] args) {
+        //HCZ：创建上下文对象，上下文对象的解读详见Context
         Context context = new Context();
+        //HCZ：向上下文对象中放置Javac文件管理对象
         JavacFileManager.preRegister(context); // can't create it until Log has been set up
+        //HCZ：前戏做完，准备真的compile，得到
         Result result = compile(args, context);
+        //HCZ：释放老的Javac文件管理对象
         if (fileManager instanceof JavacFileManager) {
             // A fresh context was created above, so jfm must be a JavacFileManager
             ((JavacFileManager)fileManager).close();
@@ -439,6 +448,7 @@ public class Main {
                           List<JavaFileObject> fileObjects,
                           Iterable<? extends Processor> processors)
     {
+        //HCZ：前戏：在上下文对象中塞out对象，初始化log对象、options对象、fileNames、classnames
         context.put(Log.outKey, out);
         log = Log.instance(context);
 
@@ -454,6 +464,7 @@ public class Main {
          * into account.
          */
         try {
+            //HCZ：如果各种不合法，返回编译错误，并告知记得敲一下-help
             if (args.length == 0
                     && (classNames == null || classNames.length == 0)
                     && fileObjects.isEmpty()) {
@@ -463,35 +474,43 @@ public class Main {
 
             Collection<File> files;
             try {
+                //HCZ：调用Main#processArgs，获得命令行参数中的.java文件对象列表
                 files = processArgs(CommandLine.parse(args), classNames);
+                //HCZ：Main#processArgs竟然返回了null？，返回错误信息
                 if (files == null) {
                     // null signals an error in options, abort
                     return Result.CMDERR;
                 } else if (files.isEmpty() && fileObjects.isEmpty() && classnames.isEmpty()) {
                     // it is allowed to compile nothing if just asking for help or version info
+                    //HCZ：文件列表是Empty，说明可能是javac --help/-X/-version/-fullversion，则返回正确
                     if (options.isSet(HELP)
                         || options.isSet(X)
                         || options.isSet(VERSION)
                         || options.isSet(FULLVERSION))
                         return Result.OK;
                     if (JavaCompiler.explicitAnnotationProcessingRequested(options)) {
+                        //HCZ:还不太懂？
                         error("err.no.source.files.classes");
                     } else {
+                        //HCZ:又不是-help这种参数配置，说明用户输入错了，返回错误
                         error("err.no.source.files");
                     }
                     return Result.CMDERR;
                 }
             } catch (java.io.FileNotFoundException e) {
+                //HCZ：指定的文件找不到，则返回错误
                 warning("err.file.not.found", e.getMessage());
                 return Result.SYSERR;
             }
 
+            //HCZ：如果指定了stdout，清一下log对象，重定向到System.out上
             boolean forceStdOut = options.isSet("stdout");
             if (forceStdOut) {
                 log.flush();
                 log.setWriters(new PrintWriter(System.out, true));
             }
 
+            //HCZ：如果没有设置nonBatchMode，则在上下文对象中创建CacheFSInfo对象，用于多次编译时的缓存。
             // allow System property in following line as a Mustang legacy
             boolean batchMode = (options.isUnset("nonBatchMode")
                         && System.getProperty("nonBatchMode") == null);
@@ -500,6 +519,9 @@ public class Main {
 
             // FIXME: this code will not be invoked if using JavacTask.parse/analyze/generate
             // invoke any available plugins
+            //HCZ：如果存在javac的插件，则...
+            //啥是javac插件？参考：https://www.baeldung.com/java-build-compiler-plugin
+            //？待研究：如下初始化javac插件的逻辑细节。
             String plugins = options.get(PLUGIN);
             if (plugins != null) {
                 JavacProcessingEnvironment pEnv = JavacProcessingEnvironment.instance(context);
@@ -534,9 +556,12 @@ public class Main {
                 }
             }
 
+            //HCZ：初始化JavaCompiler
             comp = JavaCompiler.instance(context);
 
             // FIXME: this code will not be invoked if using JavacTask.parse/analyze/generate
+            //HCZ：xdoclint相关
+            //待研究：如下xdoclint的各种初始化细节
             String xdoclint = options.get(XDOCLINT);
             String xdoclintCustom = options.get(XDOCLINT_CUSTOM);
             if (xdoclint != null || xdoclintCustom != null) {
@@ -560,11 +585,14 @@ public class Main {
                 }
             }
 
+            //HCZ：如果有待编译的java文件列表，则...
             fileManager = context.get(JavaFileManager.class);
 
             if (!files.isEmpty()) {
                 // add filenames to fileObjects
+                //HCZ：这里为啥又要初始化一次JavaCompiler？
                 comp = JavaCompiler.instance(context);
+                //HCZ：待研究，啥是otherFiles？
                 List<JavaFileObject> otherFiles = List.nil();
                 JavacFileManager dfm = (JavacFileManager)fileManager;
                 for (JavaFileObject fo : dfm.getJavaFileObjectsFromFiles(files))
@@ -572,6 +600,7 @@ public class Main {
                 for (JavaFileObject fo : otherFiles)
                     fileObjects = fileObjects.prepend(fo);
             }
+            //HCZ：调用JavaCompiler#compile方法，里面有机关，详见那边的标注
             comp.compile(fileObjects,
                          classnames.toList(),
                          processors);
