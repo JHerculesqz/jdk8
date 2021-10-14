@@ -25,17 +25,6 @@
 
 package com.sun.tools.javac.main;
 
-import java.io.File;
-import java.io.FileWriter;
-import java.io.PrintWriter;
-import java.util.Collections;
-import java.util.EnumSet;
-import java.util.LinkedHashMap;
-import java.util.Map;
-import java.util.Set;
-
-import javax.lang.model.SourceVersion;
-
 import com.sun.tools.doclint.DocLint;
 import com.sun.tools.javac.code.Lint;
 import com.sun.tools.javac.code.Source;
@@ -47,9 +36,25 @@ import com.sun.tools.javac.util.Log;
 import com.sun.tools.javac.util.Log.PrefixKind;
 import com.sun.tools.javac.util.Log.WriterKind;
 import com.sun.tools.javac.util.Options;
-import static com.sun.tools.javac.main.Option.ChoiceKind.*;
-import static com.sun.tools.javac.main.Option.OptionGroup.*;
-import static com.sun.tools.javac.main.Option.OptionKind.*;
+
+import javax.lang.model.SourceVersion;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.PrintWriter;
+import java.util.Collections;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.Set;
+
+import static com.sun.tools.javac.main.Option.ChoiceKind.ANYOF;
+import static com.sun.tools.javac.main.Option.ChoiceKind.ONEOF;
+import static com.sun.tools.javac.main.Option.OptionGroup.BASIC;
+import static com.sun.tools.javac.main.Option.OptionGroup.FILEMANAGER;
+import static com.sun.tools.javac.main.Option.OptionGroup.INFO;
+import static com.sun.tools.javac.main.Option.OptionKind.EXTENDED;
+import static com.sun.tools.javac.main.Option.OptionKind.HIDDEN;
+import static com.sun.tools.javac.main.Option.OptionKind.STANDARD;
 
 /**
  * Options for javac. The specific Option to handle a command-line option
@@ -473,7 +478,7 @@ public enum Option {
         }
     };
 
-    /** The kind of an Option. This is used by the -help and -X options. */
+    /** The kind of an Option. This is used by the -help and -X options.*/
     public enum OptionKind {
         /** A standard option, documented by -help. */
         STANDARD,
@@ -484,7 +489,8 @@ public enum Option {
     }
 
     /** The group for an Option. This determines the situations in which the
-     *  option is applicable. */
+     * option is applicable.
+     */
     enum OptionGroup {
         /** A basic option, available for use on the command line or via the
          *  Compiler API. */
@@ -506,30 +512,52 @@ public enum Option {
         ANYOF
     }
 
+    /**
+     * HCZ:
+     * 命令配置的text
+     */
     public final String text;
 
+    /**
+     * HCZ:
+     * javac的命令行参数配置分类，可选值：标准的、-X这种扩展的、javac的隐藏属性
+     */
     final OptionKind kind;
 
+    /**
+     * HCZ：
+     * javac的命令行参数配置分组，可选值：Basic、javac文件系统专有、信息类参数、操作类参数
+     */
     final OptionGroup group;
 
     /** Documentation key for arguments.
+     * HCZ:
+     * 命令配置的argsNameKey
      */
     final String argsNameKey;
 
     /** Documentation key for description.
+     * HCZ:
+     * 命令配置的descrKey
      */
     final String descrKey;
 
     /** Suffix option (-foo=bar or -foo:bar)
+     * HCZ：
+     * 命令配置是否具有后缀
      */
     final boolean hasSuffix;
 
     /** The kind of choices for this option, if any.
+     * HCZ：
+     * javac的命令行参数配置的选择类型，可选值：其中任意1个、N个
      */
     final ChoiceKind choiceKind;
 
     /** The choices for this option, if any, and whether or not the choices
-     *  are hidden
+     * are hidden
+     * HCZ:
+     * 记录任1orN个选项的具体选项
      */
     final Map<String,Boolean> choices;
 
@@ -596,6 +624,13 @@ public enum Option {
         return argsNameKey != null && !hasSuffix;
     }
 
+    /**
+     * HCZ：
+     * option字符串是否与此option对象匹配
+     *
+     * @param option
+     * @return
+     */
     public boolean matches(String option) {
         if (!hasSuffix)
             return option.equals(text);
@@ -618,6 +653,15 @@ public enum Option {
         return true;
     }
 
+    /**
+     * HCZ：
+     * 将待处理的option加入到OptionHelper对象
+     *
+     * @param helper
+     * @param option
+     * @param arg
+     * @return
+     */
     public boolean process(OptionHelper helper, String option, String arg) {
         if (choices != null) {
             if (choiceKind == ChoiceKind.ONEOF) {
@@ -650,6 +694,7 @@ public enum Option {
     }
 
     void help(Log log, OptionKind kind) {
+        //HCZ：打印指定分类的Option的help信息
         if (this.kind != kind)
             return;
 
@@ -661,6 +706,7 @@ public enum Option {
     }
 
     private String helpSynopsis(Log log) {
+        //HCZ：为当前Option对应的命令行参数配置构造help信息
         StringBuilder sb = new StringBuilder();
         sb.append(text);
         if (argsNameKey == null) {
@@ -718,6 +764,7 @@ public enum Option {
     }
 
     private static Map<String,Boolean> getXLintChoices() {
+        //HCZ：将Lint.LintCategory的枚举值构造成Map，如：[{"classfile", false}, {"-classfile", false}....]
         Map<String,Boolean> choices = new LinkedHashMap<String,Boolean>();
         choices.put("all", false);
         for (Lint.LintCategory c : Lint.LintCategory.values())
@@ -729,18 +776,22 @@ public enum Option {
     }
 
     static Set<Option> getJavaCompilerOptions() {
+        //HCZ：获得Option所有枚举值列表
         return EnumSet.allOf(Option.class);
     }
 
     public static Set<Option> getJavacFileManagerOptions() {
+        //HCZ：获得FileManager分组的Option枚举值列表
         return getOptions(EnumSet.of(FILEMANAGER));
     }
 
     public static Set<Option> getJavacToolOptions() {
+        //HCZ：获得Basic分组的Option枚举值列表
         return getOptions(EnumSet.of(BASIC));
     }
 
     static Set<Option> getOptions(Set<OptionGroup> desired) {
+        //HCZ：过滤出指定分组的Option枚举值集合
         Set<Option> options = EnumSet.noneOf(Option.class);
         for (Option option : Option.values())
             if (desired.contains(option.group))
