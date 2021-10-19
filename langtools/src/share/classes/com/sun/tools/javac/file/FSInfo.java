@@ -1,6 +1,8 @@
 
 package com.sun.tools.javac.file;
 
+import com.sun.tools.javac.util.Context;
+
 import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -11,11 +13,11 @@ import java.util.jar.Attributes;
 import java.util.jar.JarFile;
 import java.util.jar.Manifest;
 
-import com.sun.tools.javac.util.Context;
-
 /**
  * Get meta-info about files. Default direct (non-caching) implementation.
  * @see CacheFSInfo
+ *
+ * HCZ：针对java.io.File的工具类
  *
  * <p><b>This is NOT part of any supported API.
  * If you write code that depends on this, you do so at your own risk.
@@ -42,6 +44,7 @@ public class FSInfo {
         context.put(FSInfo.class, this);
     }
 
+    //HCZ：根据file对象，获得标准化file对象
     public File getCanonicalFile(File file) {
         try {
             return file.getCanonicalFile();
@@ -50,18 +53,22 @@ public class FSInfo {
         }
     }
 
+    //HCZ：判断file对象对应的文件是否存在
     public boolean exists(File file) {
         return file.exists();
     }
 
+    //HCZ：判断file对象是否是文件夹
     public boolean isDirectory(File file) {
         return file.isDirectory();
     }
 
+    //HCZ：判断file对象是否是文件
     public boolean isFile(File file) {
         return file.isFile();
     }
 
+    //HCZ：获得file对象对应的jar文件包含的子文件列表。
     public List<File> getJarClassPath(File file) throws IOException {
         String parent = file.getParent();
         JarFile jarFile = new JarFile(file);

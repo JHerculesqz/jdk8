@@ -25,6 +25,18 @@
 
 package com.sun.tools.javac.file;
 
+import com.sun.tools.javac.file.RelativePath.RelativeDirectory;
+import com.sun.tools.javac.file.RelativePath.RelativeFile;
+import com.sun.tools.javac.util.BaseFileManager;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.List;
+import com.sun.tools.javac.util.ListBuffer;
+
+import javax.lang.model.SourceVersion;
+import javax.tools.FileObject;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardJavaFileManager;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileNotFoundException;
@@ -48,20 +60,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.zip.ZipFile;
 
-import javax.lang.model.SourceVersion;
-import javax.tools.FileObject;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardJavaFileManager;
-
-import com.sun.tools.javac.file.RelativePath.RelativeFile;
-import com.sun.tools.javac.file.RelativePath.RelativeDirectory;
-import com.sun.tools.javac.util.BaseFileManager;
-import com.sun.tools.javac.util.Context;
-import com.sun.tools.javac.util.List;
-import com.sun.tools.javac.util.ListBuffer;
-
-import static javax.tools.StandardLocation.*;
+import static javax.tools.StandardLocation.CLASS_OUTPUT;
+import static javax.tools.StandardLocation.SOURCE_OUTPUT;
 
 /**
  * This class provides access to the source, class and other files
@@ -74,6 +74,7 @@ import static javax.tools.StandardLocation.*;
  */
 public class JavacFileManager extends BaseFileManager implements StandardJavaFileManager {
 
+    //HCZ：工具类，java.nio.CharBuffer -> char[]
     public static char[] toArray(CharBuffer buffer) {
         if (buffer.hasArray())
             return ((CharBuffer)buffer.compact().flip()).array();
@@ -81,17 +82,24 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
             return buffer.toString().toCharArray();
     }
 
+    //HCZ：FSInfo对象-file对象的工具类
     private FSInfo fsInfo;
 
+    //HCZ：获得javac命令行参数中是否采用了"useOptimizedZip"
     private boolean contextUseOptimizedZip;
+    //HCZ：ZipFileIndex对象缓存
     private ZipFileIndexCache zipFileIndexCache;
 
+    //HCZ：将JavaFileObject.Kind枚举类转换为Set
     private final Set<JavaFileObject.Kind> sourceOrClass =
         EnumSet.of(JavaFileObject.Kind.SOURCE, JavaFileObject.Kind.CLASS);
 
+    //HCZ：获得javac命令行参数中是否采用了"mmappedIO"
     protected boolean mmappedIO;
+    //HCZ：获得javac命令行参数中是否采用了"ignore.symbol.file"
     protected boolean symbolFileEnabled;
 
+    //HCZ：用于对File对象集合进行排序的比较器
     protected enum SortFiles implements Comparator<File> {
         FORWARD {
             public int compare(File f1, File f2) {
@@ -133,17 +141,22 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
      */
     @Override
     public void setContext(Context context) {
+        //HCZ：调用父类的setContext，给父类的一些属性赋初值
         super.setContext(context);
 
+        //HCZ：
         fsInfo = FSInfo.instance(context);
 
+        //HCZ：根据javac命令行参数，对如下属性赋初值
         contextUseOptimizedZip = options.getBoolean("useOptimizedZip", true);
         if (contextUseOptimizedZip)
             zipFileIndexCache = ZipFileIndexCache.getSharedInstance();
 
+        //HCZ：根据javac命令行参数，对如下属性赋初值
         mmappedIO = options.isSet("mmappedIO");
         symbolFileEnabled = !options.isSet("ignore.symbol.file");
 
+        //HCZ：根据javac命令行参数，对如下属性赋初值
         String sf = options.get("sortFiles");
         if (sf != null) {
             sortFiles = (sf.equals("reverse") ? SortFiles.REVERSE : SortFiles.FORWARD);

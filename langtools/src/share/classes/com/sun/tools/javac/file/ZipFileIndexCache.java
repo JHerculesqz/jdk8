@@ -36,7 +36,9 @@ import java.util.List;
 import java.util.Map;
 
 
-/** A cache for ZipFileIndex objects. */
+/** A cache for ZipFileIndex objects.
+ * HCZ：ZipFileIndex对象们的缓存
+ */
 public class ZipFileIndexCache {
 
     private final Map<File, ZipFileIndex> map =
