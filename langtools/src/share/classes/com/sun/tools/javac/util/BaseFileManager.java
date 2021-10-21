@@ -183,9 +183,14 @@ public abstract class BaseFileManager {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Encoding">
-    //HCZ：默认的Java源文件的编码名称
+    /**
+     * HCZ：默认的Java源文件的编码名称
+     */
     private String defaultEncodingName;
-    //HCZ：获得默认的Java源文件的编码名称
+
+    /**
+     * HCZ：获得默认的Java源文件的编码名称
+     */
     private String getDefaultEncodingName() {
         //HCZ：如果默认的Java源文件的编码名称为null，则读取OutputStreamWriter内部Charset的默认编码名称
         if (defaultEncodingName == null) {
@@ -195,7 +200,9 @@ public abstract class BaseFileManager {
         return defaultEncodingName;
     }
 
-    //HCZ：获得Java源文件的编码名称
+    /**
+     * HCZ：获得Java源文件的编码名称
+     */
     public String getEncodingName() {
         //HCZ：优先从命令行参数对应的option中获取编码名称
         String encName = options.get(Option.ENCODING);
@@ -207,6 +214,9 @@ public abstract class BaseFileManager {
             return encName;
     }
 
+    /**
+     * HCZ：根据编码，将ByteBuffer对象转换为CharBuffer对象
+     */
     public CharBuffer decode(ByteBuffer inbuf, boolean ignoreEncodingErrors) {
         //HCZ：获得Java源文件的编码名称
         String encodingName = getEncodingName();
@@ -274,6 +284,9 @@ public abstract class BaseFileManager {
         // unreached
     }
 
+    /**
+     * HCZ：根据编码名称，获得CharsetDecoder对象
+     */
     public CharsetDecoder getDecoder(String encodingName, boolean ignoreEncodingErrors) {
         //HCZ：根据编码名称，创建Charset对象，进而创建CharsetDecoder对象
         Charset cs = (this.charset == null)
@@ -297,8 +310,8 @@ public abstract class BaseFileManager {
 
     // <editor-fold defaultstate="collapsed" desc="ByteBuffers">
     /**
-     * Make a byte buffer from an input stream.
      * HCZ：从ByteBuffer缓存中获取重用的java.nio.ByteBuffer对象，再将InputStream对象塞入到java.nio.ByteBuffer对象。
+     * Make a byte buffer from an input stream.
      */
     public ByteBuffer makeByteBuffer(InputStream in)
         throws IOException {
@@ -321,14 +334,16 @@ public abstract class BaseFileManager {
         return (ByteBuffer)result.flip();
     }
 
-    //HCZ：将用完的ByteBuffer对象还回来，等着下次使用
+    /**
+     * HCZ：将用完的ByteBuffer对象还回来，等着下次使用
+     */
     public void recycleByteBuffer(ByteBuffer bb) {
         byteBufferCache.put(bb);
     }
 
     /**
-     * A single-element cache of direct byte buffers.
      * HCZ：静态内部类-ByteBuffer的缓存对象
+     * A single-element cache of direct byte buffers.
      */
     private static class ByteBufferCache {
         //HCZ：java.nio.ByteBuffer对象
@@ -350,12 +365,17 @@ public abstract class BaseFileManager {
         }
     }
 
-    //HCZ：从Java源文件对象读取出来的文件内容对应的ByteBuffer对象，进而加入到ByteBuffer缓存中
+    /**
+     * HCZ：从Java源文件对象读取出来的文件内容对应的ByteBuffer对象，进而加入到ByteBuffer缓存中
+     */
     private final ByteBufferCache byteBufferCache;
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Content cache">
-    //HCZ：获得缓存中指定的"Java源文件对象"对应的"从Java源文件对象读取后的被编码过的CharBuffer对象"
+
+    /**
+     * HCZ：获得缓存中指定的"Java源文件对象"对应的"从Java源文件对象读取后的被编码过的CharBuffer对象"
+     */
     public CharBuffer getCachedContent(JavaFileObject file) {
         ContentCacheEntry e = contentCache.get(file);
         if (e == null)
@@ -369,17 +389,23 @@ public abstract class BaseFileManager {
         return e.getValue();
     }
 
-    //HCZ：缓存中增加新的"Java源文件对象-从Java源文件对象读取后的被编码过的CharBuffer对象"
+    /**
+     * HCZ：缓存中增加新的"Java源文件对象-从Java源文件对象读取后的被编码过的CharBuffer对象"
+     */
     public void cache(JavaFileObject file, CharBuffer cb) {
         contentCache.put(file, new ContentCacheEntry(file, cb));
     }
 
-    //HCZ：缓存中删除"Java源文件对象-从Java源文件对象读取后的被编码过的CharBuffer对象"
+    /**
+     * HCZ：缓存中删除"Java源文件对象-从Java源文件对象读取后的被编码过的CharBuffer对象"
+     */
     public void flushCache(JavaFileObject file) {
         contentCache.remove(file);
     }
 
-    //HCZ：key：Java源文件对象，value：对应的内容缓存-有机关
+    /**
+     * HCZ：key：Java源文件对象，value：对应的内容缓存-有机关
+     */
     protected final Map<JavaFileObject, ContentCacheEntry> contentCache
             = new HashMap<JavaFileObject, ContentCacheEntry>();
 
@@ -407,6 +433,9 @@ public abstract class BaseFileManager {
     }
     // </editor-fold>
 
+    /**
+     * HCZ:X
+     */
     public static Kind getKind(String name) {
         if (name.endsWith(Kind.CLASS.extension))
             return Kind.CLASS;
@@ -418,11 +447,17 @@ public abstract class BaseFileManager {
             return Kind.OTHER;
     }
 
+    /**
+     * HCZ:X
+     */
     protected static <T> T nullCheck(T o) {
         o.getClass(); // null check
         return o;
     }
 
+    /**
+     * HCZ:X
+     */
     protected static <T> Collection<T> nullCheck(Collection<T> it) {
         for (T t : it)
             t.getClass(); // null check
