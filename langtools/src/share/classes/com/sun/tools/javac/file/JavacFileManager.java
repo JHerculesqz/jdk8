@@ -74,7 +74,9 @@ import static javax.tools.StandardLocation.SOURCE_OUTPUT;
  */
 public class JavacFileManager extends BaseFileManager implements StandardJavaFileManager {
 
-    //HCZ：工具类，java.nio.CharBuffer -> char[]
+    /**
+     * HCZ：工具类，java.nio.CharBuffer -> char[]
+     */
     public static char[] toArray(CharBuffer buffer) {
         if (buffer.hasArray())
             return ((CharBuffer)buffer.compact().flip()).array();
@@ -82,24 +84,38 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
             return buffer.toString().toCharArray();
     }
 
-    //HCZ：FSInfo对象-file对象的工具类
+    /**
+     * HCZ：FSInfo对象-file对象的工具类
+     */
     private FSInfo fsInfo;
 
-    //HCZ：获得javac命令行参数中是否采用了"useOptimizedZip"
+    /**
+     * HCZ：获得javac命令行参数中是否采用了"useOptimizedZip"
+     */
     private boolean contextUseOptimizedZip;
-    //HCZ：ZipFileIndex对象缓存
+    /**
+     * HCZ：ZipFileIndex对象缓存
+     */
     private ZipFileIndexCache zipFileIndexCache;
 
-    //HCZ：将JavaFileObject.Kind枚举类转换为Set
+    /**
+     * HCZ：将JavaFileObject.Kind枚举类转换为Set
+     */
     private final Set<JavaFileObject.Kind> sourceOrClass =
         EnumSet.of(JavaFileObject.Kind.SOURCE, JavaFileObject.Kind.CLASS);
 
-    //HCZ：获得javac命令行参数中是否采用了"mmappedIO"
+    /**
+     * HCZ：获得javac命令行参数中是否采用了"mmappedIO"
+     */
     protected boolean mmappedIO;
-    //HCZ：获得javac命令行参数中是否采用了"ignore.symbol.file"
+    /**
+     * HCZ：获得javac命令行参数中是否采用了"ignore.symbol.file"
+     */
     protected boolean symbolFileEnabled;
 
-    //HCZ：用于对File对象集合进行排序的比较器
+    /**
+     * HCZ：用于对File对象集合进行排序的比较器
+     */
     protected enum SortFiles implements Comparator<File> {
         FORWARD {
             public int compare(File f1, File f2) {
@@ -115,6 +131,7 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
     protected SortFiles sortFiles;
 
     /**
+     * HCZ:X
      * Register a Context.Factory to create a JavacFileManager.
      */
     public static void preRegister(Context context) {
@@ -126,6 +143,7 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
     }
 
     /**
+     * HCZ:X
      * Create a JavacFileManager using a given context, optionally registering
      * it as the JavaFileManager for that context.
      */
@@ -137,6 +155,7 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
     }
 
     /**
+     * HCZ:设置上下文，对本对象的各个属性赋初值
      * Set the context for JavacFileManager.
      */
     @Override
@@ -144,7 +163,7 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
         //HCZ：调用父类的setContext，给父类的一些属性赋初值
         super.setContext(context);
 
-        //HCZ：
+        //HCZ：从上下文对象获得FsInVo对象，对如下属性赋初值
         fsInfo = FSInfo.instance(context);
 
         //HCZ：根据javac命令行参数，对如下属性赋初值
@@ -164,6 +183,7 @@ public class JavacFileManager extends BaseFileManager implements StandardJavaFil
     }
 
     /**
+     * HCZ:X
      * Set whether or not to use ct.sym as an alternate to rt.jar.
      */
     public void setSymbolFileEnabled(boolean b) {
