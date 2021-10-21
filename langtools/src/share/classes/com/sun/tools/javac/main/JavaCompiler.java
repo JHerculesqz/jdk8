@@ -462,8 +462,9 @@ public class JavaCompiler {
     /* Switches:
      */
 
-    /** Verbose output.
+    /**
      * HCZ：是否需要打印verbose
+     * Verbose output.
      */
     public boolean verbose;
 
@@ -596,9 +597,7 @@ public class JavaCompiler {
             return log.nwarnings;
     }
 
-    /** Try to open input stream with given name.
-     *  Report an error if this fails.
-     *
+    /**
      *  HCZ：[调用链]
      *  JavaCompiler#readSource(JavaFileObject)
      *      RegularFileObject#getCharContent(boolean ignoreEncodingErrors)
@@ -606,6 +605,9 @@ public class JavaCompiler {
      *              BaseFileManager#"region Content cache"
      *              BaseFileManager#"region ByteBuffers"
      *              BaseFileManager#"region Encoding"
+     *
+     *  Try to open input stream with given name.
+     *  Report an error if this fails.
      *
      *  @param filename   The file name of the input stream to be opened.
      */
@@ -680,7 +682,7 @@ public class JavaCompiler {
         return parse(fm.getJavaFileObjectsFromStrings(List.of(filename)).iterator().next());
     }
 
-    /** Parse contents of file.
+    /**
      * HCZ：[调用链]
      * Main#compile(String[] args)
      * Main#compile(String[] args, String[] classNames, Context, List<JavaFileObject>, Iterable<? extends Processor>)
@@ -690,6 +692,7 @@ public class JavaCompiler {
      * JavaCompiler#readSource(JavaFileObject)
      * JavaCompiler#parse(JavaFileObject, CharSequence)
      *
+     * Parse contents of file.
      *  @param filename     The name of the file to be parsed.
      */
     public JCTree.JCCompilationUnit parse(JavaFileObject filename) {
@@ -1773,6 +1776,9 @@ public class JavaCompiler {
         }
     }
 
+    /**
+     * HCZ：返回当前时间戳
+     */
     private static long now() {
         return System.currentTimeMillis();
     }
