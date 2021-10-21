@@ -105,6 +105,9 @@ class RegularFileObject extends BaseFileObject {
         return new FileOutputStream(file);
     }
 
+    /**
+     * HCZ：将此文件对象转换为CharBuffer对象
+     */
     @Override
     public CharBuffer getCharContent(boolean ignoreEncodingErrors) throws IOException {
         //HCZ：调用文件管理对象#获得缓存的CharBuffer对象
