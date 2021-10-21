@@ -183,8 +183,11 @@ public abstract class BaseFileManager {
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Encoding">
+    //HCZ：默认的Java源文件的编码名称
     private String defaultEncodingName;
+    //HCZ：获得默认的Java源文件的编码名称
     private String getDefaultEncodingName() {
+        //HCZ：如果默认的Java源文件的编码名称为null，则读取OutputStreamWriter内部Charset的默认编码名称
         if (defaultEncodingName == null) {
             defaultEncodingName =
                 new OutputStreamWriter(new ByteArrayOutputStream()).getEncoding();
@@ -192,18 +195,24 @@ public abstract class BaseFileManager {
         return defaultEncodingName;
     }
 
+    //HCZ：获得Java源文件的编码名称
     public String getEncodingName() {
+        //HCZ：优先从命令行参数对应的option中获取编码名称
         String encName = options.get(Option.ENCODING);
+        //HCZ：如果没有读到，则返回默认的Java源文件的编码名称
         if (encName == null)
             return getDefaultEncodingName();
+        //HCZ：如果读到了，则返回命令行参数对应的option中的编码名称
         else
             return encName;
     }
 
     public CharBuffer decode(ByteBuffer inbuf, boolean ignoreEncodingErrors) {
+        //HCZ：获得Java源文件的编码名称
         String encodingName = getEncodingName();
         CharsetDecoder decoder;
         try {
+            //HCZ：根据编码名称，获得CharsetDecoder对象
             decoder = getDecoder(encodingName, ignoreEncodingErrors);
         } catch (IllegalCharsetNameException e) {
             log.error("unsupported.encoding", encodingName);
@@ -266,17 +275,20 @@ public abstract class BaseFileManager {
     }
 
     public CharsetDecoder getDecoder(String encodingName, boolean ignoreEncodingErrors) {
+        //HCZ：根据编码名称，创建Charset对象，进而创建CharsetDecoder对象
         Charset cs = (this.charset == null)
             ? Charset.forName(encodingName)
             : this.charset;
         CharsetDecoder decoder = cs.newDecoder();
 
+        //HCZ：创建编码错误Action对象(CodingErrorAction对象)
         CodingErrorAction action;
         if (ignoreEncodingErrors)
             action = CodingErrorAction.REPLACE;
         else
             action = CodingErrorAction.REPORT;
 
+        //HCZ：将CodingErrorAction对象塞进CharsetDecoder对象中
         return decoder
             .onMalformedInput(action)
             .onUnmappableCharacter(action);
@@ -286,6 +298,7 @@ public abstract class BaseFileManager {
     // <editor-fold defaultstate="collapsed" desc="ByteBuffers">
     /**
      * Make a byte buffer from an input stream.
+     * HCZ：从ByteBuffer缓存中获取重用的java.nio.ByteBuffer对象，再将InputStream对象塞入到java.nio.ByteBuffer对象。
      */
     public ByteBuffer makeByteBuffer(InputStream in)
         throws IOException {
@@ -308,17 +321,22 @@ public abstract class BaseFileManager {
         return (ByteBuffer)result.flip();
     }
 
+    //HCZ：将用完的ByteBuffer对象还回来，等着下次使用
     public void recycleByteBuffer(ByteBuffer bb) {
         byteBufferCache.put(bb);
     }
 
     /**
      * A single-element cache of direct byte buffers.
+     * HCZ：静态内部类-ByteBuffer的缓存对象
      */
     private static class ByteBufferCache {
+        //HCZ：java.nio.ByteBuffer对象
         private ByteBuffer cached;
+        //HCZ：get方法
         ByteBuffer get(int capacity) {
             if (capacity < 20480) capacity = 20480;
+            //HCZ：有机关——为了重用java.nio.ByteBuffer对象，在不满足条件的情况下就清空此对象内容，进而支持了对象公用但对象内容更新。
             ByteBuffer result =
                 (cached != null && cached.capacity() >= capacity)
                 ? (ByteBuffer)cached.clear()
@@ -326,15 +344,18 @@ public abstract class BaseFileManager {
             cached = null;
             return result;
         }
+        //HCZ：set方法，记录java.nio.ByteBuffer对象
         void put(ByteBuffer x) {
             cached = x;
         }
     }
 
+    //HCZ：从Java源文件对象读取出来的文件内容对应的ByteBuffer对象，进而加入到ByteBuffer缓存中
     private final ByteBufferCache byteBufferCache;
     // </editor-fold>
 
     // <editor-fold defaultstate="collapsed" desc="Content cache">
+    //HCZ：获得缓存中指定的"Java源文件对象"对应的"从Java源文件对象读取后的被编码过的CharBuffer对象"
     public CharBuffer getCachedContent(JavaFileObject file) {
         ContentCacheEntry e = contentCache.get(file);
         if (e == null)
@@ -348,30 +369,38 @@ public abstract class BaseFileManager {
         return e.getValue();
     }
 
+    //HCZ：缓存中增加新的"Java源文件对象-从Java源文件对象读取后的被编码过的CharBuffer对象"
     public void cache(JavaFileObject file, CharBuffer cb) {
         contentCache.put(file, new ContentCacheEntry(file, cb));
     }
 
+    //HCZ：缓存中删除"Java源文件对象-从Java源文件对象读取后的被编码过的CharBuffer对象"
     public void flushCache(JavaFileObject file) {
         contentCache.remove(file);
     }
 
+    //HCZ：key：Java源文件对象，value：对应的内容缓存-有机关
     protected final Map<JavaFileObject, ContentCacheEntry> contentCache
             = new HashMap<JavaFileObject, ContentCacheEntry>();
 
     protected static class ContentCacheEntry {
+        //HCZ：时间戳
         final long timestamp;
+        //HCZ：CharBuffer对象的软引用，为了性能
         final SoftReference<CharBuffer> ref;
 
+        //HCZ：构造函数，关键点是创建了CharBuffer对象的软引用
         ContentCacheEntry(JavaFileObject file, CharBuffer cb) {
             this.timestamp = file.getLastModified();
             this.ref = new SoftReference<CharBuffer>(cb);
         }
 
+        //HCZ：如果"Java源文件对象的最后修改时间"与"此内容缓存对象记录的时间"不一致，则认为不合法
         boolean isValid(JavaFileObject file) {
             return timestamp == file.getLastModified();
         }
 
+        //HCZ：读取此内容缓存对象的实际干货——CharBuffer对象
         CharBuffer getValue() {
             return ref.get();
         }

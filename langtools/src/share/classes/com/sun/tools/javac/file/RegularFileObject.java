@@ -107,19 +107,25 @@ class RegularFileObject extends BaseFileObject {
 
     @Override
     public CharBuffer getCharContent(boolean ignoreEncodingErrors) throws IOException {
+        //HCZ：调用文件管理对象#获得缓存的CharBuffer对象
         CharBuffer cb = fileManager.getCachedContent(this);
         if (cb == null) {
             InputStream in = new FileInputStream(file);
             try {
+                //HCZ：根据InputStream对象，调用NIO包相关方法，生成ByteBuffer对象
                 ByteBuffer bb = fileManager.makeByteBuffer(in);
+                //HCZ：?待研究
                 JavaFileObject prev = fileManager.log.useSource(this);
                 try {
+                    //HCZ：将ByteBuffer对象解码成统一的编码，如：Java源文件是GBK编码，经过decode解码为UTF-8。
                     cb = fileManager.decode(bb, ignoreEncodingErrors);
                 } finally {
                     fileManager.log.useSource(prev);
                 }
+                //HCZ：将用完的ByteBuffer对象还回来，等着下次使用
                 fileManager.recycleByteBuffer(bb);
                 if (!ignoreEncodingErrors) {
+                    //HCZ：缓存中增加新的"Java源文件对象-从Java源文件对象读取后的被编码过的CharBuffer对象"
                     fileManager.cache(this, cb);
                 }
             } finally {

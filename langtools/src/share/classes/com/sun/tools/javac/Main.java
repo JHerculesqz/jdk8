@@ -33,25 +33,23 @@ import java.io.PrintWriter;
  */
 @jdk.Exported
 public class Main {
-
-    /** Main entry point for the launcher.
-     *  Note: This method calls System.exit.
+    /**
+     * HCZ：javac的入口
      *
-     *  HCZ：
-     *  javac的入口
+     * Main entry point for the launcher.
+     * Note: This method calls System.exit.
      *
-     *  @param args command line arguments
+     * @param args command line arguments
      */
     public static void main(String[] args) throws Exception {
         System.exit(compile(args));
     }
 
-    /** Programmatic interface to the Java Programming Language
-     * compiler, javac.
+    /**
+     * HCZ：被Main调用。被CreateSymbols调用，但CreateSymbols是干啥的呢？
      *
-     * HCZ：
-     * 被Main调用
-     * 被CreateSymbols调用，但CreateSymbols是干啥的呢？
+     * Programmatic interface to the Java Programming Language
+     * compiler, javac.
      *
      * @param args The command line arguments that would normally be
      * passed to the javac program as described in the man page.
@@ -64,13 +62,11 @@ public class Main {
         return compiler.compile(args).exitCode;
     }
 
-
-
-    /** Programmatic interface to the Java Programming Language
-     * compiler, javac.
+    /**
+     * HCZ：被JavacTool调用，但JavacTool是干啥的？
      *
-     * HCZ：
-     * 被JavacTool调用，但JavacTool是干啥的？
+     * Programmatic interface to the Java Programming Language
+     * compiler, javac.
      *
      * @param args The command line arguments that would normally be
      * passed to the javac program as described in the man page.

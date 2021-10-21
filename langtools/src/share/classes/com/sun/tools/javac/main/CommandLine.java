@@ -33,6 +33,7 @@ import java.io.StreamTokenizer;
 import com.sun.tools.javac.util.ListBuffer;
 
 /**
+ * HCZ：X
  * Various utility methods for processing Java tool command line arguments.
  *
  *  <p><b>This is NOT part of any supported API.

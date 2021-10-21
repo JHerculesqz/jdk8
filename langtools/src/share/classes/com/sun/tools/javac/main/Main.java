@@ -67,41 +67,35 @@ import static com.sun.tools.javac.main.Option.*;
  */
 public class Main {
 
-    /** The name of the compiler, for use in diagnostics.
-     * HCZ：
-     * 调用本类的构造函数时创建or传入的
-     * 其实就是javac
+    /** HCZ：调用本类的构造函数时创建or传入的，其实就是javac
+     * The name of the compiler, for use in diagnostics.
      */
     String ownName;
 
-    /** The writer to use for diagnostic output.
-     * HCZ：
-     * 调用本类的构造函数时创建or传入的
-     * 如：System.err的PrintWriter包装
+    /**
+     * HCZ：调用本类的构造函数时创建or传入的。如：System.err的PrintWriter包装
+     *
+     * The writer to use for diagnostic output.
      */
     PrintWriter out;
 
-    /** The log to use for diagnostic output.
-     * HCZ：
-     * 调用本类的构造函数时创建or传入的
-     * 就是Log工具类的实例
+    /**
+     * HCZ：调用本类的构造函数时创建or传入的。就是Log工具类的实例
+     * The log to use for diagnostic output.
      */
     public Log log;
 
     /**
+     * HCZ：这个属性的作用就是在api模式下抛异常——JavacTaskImpl会调用setAPIMode，进而更新这个属性=true。javac命令行正常调用，此属性永远是false
+     *
      * If true, certain errors will cause an exception, such as command line
      * arg errors, or exceptions in user provided code.
-     *
-     * HCZ：
-     * 这个属性的作用就是在api模式下抛异常——JavacTaskImpl会调用setAPIMode，进而更新这个属性=true
-     * javac命令行正常调用，此属性永远是false
      */
     boolean apiMode;
 
-
-    /** Result codes.
-     * HCZ：
-     * Main#compile的编译结果数据结构，仅仅表达编译成功or失败
+    /**
+     * HCZ：Main#compile的编译结果数据结构，仅仅表达编译成功or失败
+     * Result codes.
      */
     public enum Result {
         OK(0),        // Compilation completed with no errors.
@@ -122,16 +116,13 @@ public class Main {
     }
 
     /**
-     * HCZ:
-     * 将Option枚举类的枚举值变成Option[]存下来
-     * 这些Option元素都是javac支持的合法的命令行配置参数
+     * HCZ:将Option枚举类的枚举值变成Option[]存下来。这些Option元素都是javac支持的合法的命令行配置参数
      */
     private Option[] recognizedOptions =
             Option.getJavaCompilerOptions().toArray(new Option[0]);
 
     /**
-     * HCZ：
-     * 实现OptionHelper抽象类
+     * HCZ：实现OptionHelper抽象类
      */
     private OptionHelper optionHelper = new OptionHelper() {
         @Override
@@ -177,47 +168,49 @@ public class Main {
     };
 
     /**
-     * Construct a compiler instance.
      * HCZ:X
+     * Construct a compiler instance.
      */
     public Main(String name) {
         this(name, new PrintWriter(System.err, true));
     }
 
     /**
-     * Construct a compiler instance.
      * HCZ:X
+     * Construct a compiler instance.
      */
     public Main(String name, PrintWriter out) {
         this.ownName = name;
         this.out = out;
     }
 
-    /** A table of all options that's passed to the JavaCompiler constructor.
-     * HCZ：
-     * 用户实际输入的命令行配置参数，
-     * 都是在本类的调用方初始化的，初始化都是用的Options.instance(context)
+    /**
+     * HCZ：用户实际输入的命令行配置参数，都是在本类的调用方初始化的，初始化都是用的Options.instance(context)
+     *
+     * A table of all options that's passed to the JavaCompiler constructor.
      */
     private Options options = null;
 
-    /** The list of source files to process
-     * HCZ：
-     * 持有本类实例的调用方，直接给给此属性初始化，初始化为LinkedHashSet<File>
-     * 然后通过本类的optionHelper属性重载的addFile方法将javac跟着的文件列表加入到本属性中。
+    /**
+     * HCZ：持有本类实例的调用方，直接给给此属性初始化，初始化为LinkedHashSet<File>。然后通过本类的optionHelper属性重载的addFile方法将javac跟着的文件列表加入到本属性中。
+     *
+     * The list of source files to process
      */
     public Set<File> filenames = null; // XXX sb protected
 
-    /** List of class files names passed on the command line
-     *
+    /**
+     * HCZ：
      * 在Main#compile方法中，将此属性初始化为ListBuffer<String>，
      * 在Main#processArgs方法中，给此属性添加javac跟着的文件列表中对应的ClassName列表。
      * 在Main#optionHelper属性重载的addClassName方法将javac跟着的文件列表加入到本属性中。
+     *
+     * List of class files names passed on the command line
      */
-    public ListBuffer<String> classnames = null; // XXX sb protected
+    public ListBuffer<String> classnames = null; // XXX sb protected  HCZ：你骂人？
 
-    /** Report a usage error.
-     * HCZ:
-     * 封装了log对象，记录错误日志，给Main类调用
+    /**
+     * HCZ:封装了log对象，记录错误日志，给Main类调用
+     * Report a usage error.
      */
     void error(String key, Object... args) {
         if (apiMode) {
@@ -228,9 +221,9 @@ public class Main {
         log.printLines(PrefixKind.JAVAC, "msg.usage", ownName);
     }
 
-    /** Report a warning.
-     * HCZ：
-     * 封装了log对象，记录warning日志，给Main类调用
+    /**
+     * HCZ：封装了log对象，记录warning日志，给Main类调用
+     * Report a warning.
      */
     void warning(String key, Object... args) {
         log.printRawLines(ownName + ": " + log.localize(PrefixKind.JAVAC, key, args));
@@ -238,8 +231,6 @@ public class Main {
 
     /**
      * HCZ:X
-     * @param flag
-     * @return
      */
     public Option getOption(String flag) {
         for (Option option : recognizedOptions) {
@@ -251,7 +242,6 @@ public class Main {
 
     /**
      * HCZ:X
-     * @param options
      */
     public void setOptions(Options options) {
         if (options == null)
@@ -261,16 +251,16 @@ public class Main {
 
     /**
      * HCZ:X
-     * @param apiMode
      */
     public void setAPIMode(boolean apiMode) {
         this.apiMode = apiMode;
     }
 
-    /** Process command line arguments: store all command line options
+    /**
+     *  HCZ：参数的处理函数，没啥好仔细阅读的，debug一下就明白了。
+     *
+     *  Process command line arguments: store all command line options
      *  in `options' table and return all source filenames.
-     *  HCZ：
-     *  参数的处理函数，没啥好仔细阅读的，debug一下就明白了。
      *
      *  @param flags    The array of command line arguments.
      */
@@ -278,6 +268,9 @@ public class Main {
         return processArgs(flags, null);
     }
 
+    /**
+     * HCZ:X
+     */
     public Collection<File> processArgs(String[] flags, String[] classNames) { // XXX sb protected
         int ac = 0;
         while (ac < flags.length) {
@@ -409,7 +402,9 @@ public class Main {
             return true;
         }
 
-    /** Programmatic interface for main function.
+    /**
+     * HCZ：被Main调用，触发Java源文件的compile
+     * Programmatic interface for main function.
      * @param args    The command line parameters.
      */
     public Result compile(String[] args) {
@@ -427,11 +422,16 @@ public class Main {
         return result;
     }
 
+    /**
+     * HCZ:X
+     */
     public Result compile(String[] args, Context context) {
         return compile(args, context, List.<JavaFileObject>nil(), null);
     }
 
-    /** Programmatic interface for main function.
+    /**
+     * HCZ：X
+     * Programmatic interface for main function.
      * @param args    The command line parameters.
      */
     public Result compile(String[] args,
@@ -442,6 +442,9 @@ public class Main {
         return compile(args,  null, context, fileObjects, processors);
     }
 
+    /**
+     * HCZ:被Main#compile(String[] args)调用，真正实现Java源码的compile
+     */
     public Result compile(String[] args,
                           String[] classNames,
                           Context context,
@@ -662,18 +665,18 @@ public class Main {
         return Result.OK;
     }
 
-    /** Print a message reporting an internal error.
-     * HCZ:
-     * 封装了log对象，记录bug日志，给Main类调用
+    /**
+     * HCZ:封装了log对象，记录bug日志，给Main类调用
+     * Print a message reporting an internal error.
      */
     void bugMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.bug", JavaCompiler.version());
         ex.printStackTrace(log.getWriter(WriterKind.NOTICE));
     }
 
-    /** Print a message reporting a fatal error.
-     * HCZ：
-     * 封装了log对象，记录fatal日志，给Main类调用
+    /**
+     * HCZ：封装了log对象，记录fatal日志，给Main类调用
+     * Print a message reporting a fatal error.
      */
     void feMessage(Throwable ex) {
         log.printRawLines(ex.getMessage());
@@ -682,48 +685,49 @@ public class Main {
         }
     }
 
-    /** Print a message reporting an input/output error.
-     * HCZ：
-     * 封装了log对象，记录io日志，给Main类调用
+    /**
+     * HCZ：封装了log对象，记录io日志，给Main类调用
+     * Print a message reporting an input/output error.
      */
     void ioMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.io");
         ex.printStackTrace(log.getWriter(WriterKind.NOTICE));
     }
 
-    /** Print a message reporting an out-of-resources error.
-     * HCZ:
-     * 封装了log对象，记录资源错误日志，给Main类调用
+    /**
+     * HCZ:封装了log对象，记录资源错误日志，给Main类调用
+     * Print a message reporting an out-of-resources error.
      */
     void resourceMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.resource");
         ex.printStackTrace(log.getWriter(WriterKind.NOTICE));
     }
 
-    /** Print a message reporting an uncaught exception from an
+    /**
+     * HCZ：封装了log对象，记录注解异常日志，给Main类调用
+     *
+     * Print a message reporting an uncaught exception from an
      * annotation processor.
-     * HCZ：
-     * 封装了log对象，记录注解异常日志，给Main类调用
      */
     void apMessage(AnnotationProcessingError ex) {
         log.printLines(PrefixKind.JAVAC, "msg.proc.annotation.uncaught.exception");
         ex.getCause().printStackTrace(log.getWriter(WriterKind.NOTICE));
     }
 
-    /** Print a message reporting an uncaught exception from an
+    /**
+     * HCZ：封装了log对象，记录-Xplugin对应的plugin错误日志，给Main类调用
+     *
+     * Print a message reporting an uncaught exception from an
      * annotation processor.
-     * HCZ：
-     * 封装了log对象，记录-Xplugin对应的plugin错误日志，给Main类调用
      */
     void pluginMessage(Throwable ex) {
         log.printLines(PrefixKind.JAVAC, "msg.plugin.uncaught.exception");
         ex.printStackTrace(log.getWriter(WriterKind.NOTICE));
     }
 
-    /** Display the location and checksum of a class.
-     * HCZ：
-     * 打印指定类的.class文件路径和MD5.checksum
-     * 啥时候用到？
+    /**
+     * HCZ：打印指定类的.class文件路径和MD5.checksum。但啥时候用到？
+     * Display the location and checksum of a class.
      */
     void showClass(String className) {
         PrintWriter pw = log.getWriter(WriterKind.NOTICE);
@@ -757,8 +761,7 @@ public class Main {
     }
 
     /**
-     * HCZ:
-     * javac内部实现的File管理工具类
+     * HCZ: javac内部实现的File管理工具类
      */
     private JavaFileManager fileManager;
 

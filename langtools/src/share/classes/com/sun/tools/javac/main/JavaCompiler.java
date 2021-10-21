@@ -463,6 +463,7 @@ public class JavaCompiler {
      */
 
     /** Verbose output.
+     * HCZ：是否需要打印verbose
      */
     public boolean verbose;
 
@@ -597,11 +598,21 @@ public class JavaCompiler {
 
     /** Try to open input stream with given name.
      *  Report an error if this fails.
+     *
+     *  HCZ：[调用链]
+     *  JavaCompiler#readSource(JavaFileObject)
+     *      RegularFileObject#getCharContent(boolean ignoreEncodingErrors)
+     *          JavacFileManager#getCachedContent(JavaFileObject)
+     *              BaseFileManager#"region Content cache"
+     *              BaseFileManager#"region ByteBuffers"
+     *              BaseFileManager#"region Encoding"
+     *
      *  @param filename   The file name of the input stream to be opened.
      */
     public CharSequence readSource(JavaFileObject filename) {
         try {
             inputFiles.add(filename);
+            //HCZ：调用JavaFileObject对象的getCharContent接口，获得字符流
             return filename.getCharContent(false);
         } catch (IOException e) {
             log.error("error.reading.file", filename, JavacFileManager.getMessage(e));
@@ -614,29 +625,39 @@ public class JavaCompiler {
      *  @param content      The characters to be parsed.
      */
     protected JCCompilationUnit parse(JavaFileObject filename, CharSequence content) {
+        //HCZ：获得当前时间
         long msec = now();
+        //HCZ：创建抽象语法树对象
         JCCompilationUnit tree = make.TopLevel(List.<JCTree.JCAnnotation>nil(),
                                       null, List.<JCTree>nil());
+        //HCZ：如果从Java源文件转换得到的字符输入流不为空(content对象)，则
         if (content != null) {
+            //HCZ：如果需要打印verbose，则打印verbose
             if (verbose) {
                 log.printVerbose("parsing.started", filename);
             }
+            //HCZ：如果TaskListener管理器内部维护的监听器集合不为空，则
             if (!taskListener.isEmpty()) {
+                //HCZ：创建TaskEvent事件，让TaskListener管理器开始监听工作
                 TaskEvent e = new TaskEvent(TaskEvent.Kind.PARSE, filename);
                 taskListener.started(e);
                 keepComments = true;
                 genEndPos = true;
             }
+            //HCZ：通过ParserFactory创建Parser对象，传入从Java源文件转换得到的字符输入流不为空(content对象)
             Parser parser = parserFactory.newParser(content, keepComments(), genEndPos, lineDebugInfo);
+            //HCZ：词法分析，获得抽象语法树——有机关，详见那边标注
             tree = parser.parseCompilationUnit();
             if (verbose) {
                 log.printVerbose("parsing.done", Long.toString(elapsed(msec)));
             }
         }
-
+        //HCZ：抽象语法树对象中记录Java源文件路径
         tree.sourcefile = filename;
 
+        //HCZ：如果如下条件满足，则
         if (content != null && !taskListener.isEmpty()) {
+            //HCZ：创建TaskEvent事件，让TaskListener管理器停止监听工作
             TaskEvent e = new TaskEvent(TaskEvent.Kind.PARSE, tree);
             taskListener.finished(e);
         }
@@ -660,11 +681,21 @@ public class JavaCompiler {
     }
 
     /** Parse contents of file.
+     * HCZ：[调用链]
+     * Main#compile(String[] args)
+     * Main#compile(String[] args, String[] classNames, Context, List<JavaFileObject>, Iterable<? extends Processor>)
+     * JavaCompiler#compile(List<JavaFileObject>, List<String> classnames, Iterable<? extends Processor>)
+     * JavaCompiler#parseFiles(Iterable<JavaFileObject>)
+     * JavaCompiler#parse(JavaFileObject)
+     * JavaCompiler#readSource(JavaFileObject)
+     * JavaCompiler#parse(JavaFileObject, CharSequence)
+     *
      *  @param filename     The name of the file to be parsed.
      */
     public JCTree.JCCompilationUnit parse(JavaFileObject filename) {
         JavaFileObject prev = log.useSource(filename);
         try {
+            //HCZ：Java源代码->[readSource()]->字符流->[parse()]->(Token流->抽象语法树)
             JCTree.JCCompilationUnit t = parse(filename, readSource(filename));
             if (t.endPositions != null)
                 log.setEndPosTable(filename, t.endPositions);
@@ -945,6 +976,7 @@ public class JavaCompiler {
            return List.nil();
 
         //parse all files
+        //HCZ：遍历输入的文件对象列表(每个文件对象调用parse方法，得到抽象语法树)，得到抽象语法树集合。
         ListBuffer<JCCompilationUnit> trees = new ListBuffer<>();
         Set<JavaFileObject> filesSoFar = new HashSet<JavaFileObject>();
         for (JavaFileObject fileObject : fileObjects) {

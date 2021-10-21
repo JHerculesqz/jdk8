@@ -513,83 +513,95 @@ public enum Option {
     }
 
     /**
-     * HCZ:
-     * 命令配置的text
+     * HCZ:命令配置的text
      */
     public final String text;
 
     /**
-     * HCZ:
-     * javac的命令行参数配置分类，可选值：标准的、-X这种扩展的、javac的隐藏属性
+     * HCZ:javac的命令行参数配置分类，可选值：标准的、-X这种扩展的、javac的隐藏属性
      */
     final OptionKind kind;
 
     /**
-     * HCZ：
-     * javac的命令行参数配置分组，可选值：Basic、javac文件系统专有、信息类参数、操作类参数
+     * HCZ：javac的命令行参数配置分组，可选值：Basic、javac文件系统专有、信息类参数、操作类参数
      */
     final OptionGroup group;
 
-    /** Documentation key for arguments.
-     * HCZ:
-     * 命令配置的argsNameKey
+    /**
+     * HCZ:命令配置的argsNameKey
+     * Documentation key for arguments.
      */
     final String argsNameKey;
 
-    /** Documentation key for description.
-     * HCZ:
-     * 命令配置的descrKey
+    /**
+     * HCZ:命令配置的descrKey
+     * Documentation key for description.
      */
     final String descrKey;
 
-    /** Suffix option (-foo=bar or -foo:bar)
-     * HCZ：
-     * 命令配置是否具有后缀
+    /**
+     * HCZ：命令配置是否具有后缀
+     * Suffix option (-foo=bar or -foo:bar)
      */
     final boolean hasSuffix;
 
-    /** The kind of choices for this option, if any.
-     * HCZ：
-     * javac的命令行参数配置的选择类型，可选值：其中任意1个、N个
+    /**
+     * HCZ：javac的命令行参数配置的选择类型，可选值：其中任意1个、N个
+     * The kind of choices for this option, if any.
      */
     final ChoiceKind choiceKind;
 
-    /** The choices for this option, if any, and whether or not the choices
+    /**
+     * HCZ:记录任1orN个选项的具体选项
+     *
+     * The choices for this option, if any, and whether or not the choices
      * are hidden
-     * HCZ:
-     * 记录任1orN个选项的具体选项
      */
     final Map<String,Boolean> choices;
 
-
+    /**
+     * HCZ:X
+     */
     Option(String text, String descrKey,
             OptionKind kind, OptionGroup group) {
         this(text, null, descrKey, kind, group, null, null, false);
     }
 
+    /**
+     * HCZ:X
+     */
     Option(String text, String argsNameKey, String descrKey,
             OptionKind kind, OptionGroup group) {
         this(text, argsNameKey, descrKey, kind, group, null, null, false);
     }
 
+    /**
+     * HCZ:X
+     */
     Option(String text, String argsNameKey, String descrKey,
             OptionKind kind, OptionGroup group, boolean doHasSuffix) {
         this(text, argsNameKey, descrKey, kind, group, null, null, doHasSuffix);
     }
 
+    /**
+     * HCZ:X
+     */
     Option(String text, String descrKey,
             OptionKind kind, OptionGroup group,
             ChoiceKind choiceKind, Map<String,Boolean> choices) {
         this(text, null, descrKey, kind, group, choiceKind, choices, false);
     }
 
+    /**
+     * HCZ:X
+     */
     Option(String text, String descrKey,
             OptionKind kind, OptionGroup group,
             ChoiceKind choiceKind, String... choices) {
         this(text, null, descrKey, kind, group, choiceKind,
                 createChoices(choices), false);
     }
-    // where
+    // where HCZ：X
         private static Map<String,Boolean> createChoices(String... choices) {
             Map<String,Boolean> map = new LinkedHashMap<String,Boolean>();
             for (String c: choices)
@@ -597,6 +609,9 @@ public enum Option {
             return map;
         }
 
+    /**
+     * HCZ:X
+     */
     private Option(String text, String argsNameKey, String descrKey,
             OptionKind kind, OptionGroup group,
             ChoiceKind choiceKind, Map<String,Boolean> choices,
@@ -612,24 +627,29 @@ public enum Option {
         this.hasSuffix = doHasSuffix || lastChar == ':' || lastChar == '=';
     }
 
+    /**
+     * HCZ:X
+     */
     public String getText() {
         return text;
     }
 
+    /**
+     * HCZ:X
+     */
     public OptionKind getKind() {
         return kind;
     }
 
+    /**
+     * HCZ:X
+     */
     public boolean hasArg() {
         return argsNameKey != null && !hasSuffix;
     }
 
     /**
-     * HCZ：
-     * option字符串是否与此option对象匹配
-     *
-     * @param option
-     * @return
+     * HCZ：option字符串是否与此option对象匹配
      */
     public boolean matches(String option) {
         if (!hasSuffix)
@@ -654,13 +674,7 @@ public enum Option {
     }
 
     /**
-     * HCZ：
-     * 将待处理的option加入到OptionHelper对象
-     *
-     * @param helper
-     * @param option
-     * @param arg
-     * @return
+     * HCZ：将待处理的option加入到OptionHelper对象
      */
     public boolean process(OptionHelper helper, String option, String arg) {
         if (choices != null) {
@@ -686,6 +700,9 @@ public enum Option {
         return false;
     }
 
+    /**
+     * HCZ:X
+     */
     public boolean process(OptionHelper helper, String option) {
         if (hasSuffix)
             return process(helper, text, option.substring(text.length()));
@@ -693,8 +710,10 @@ public enum Option {
             return process(helper, option, option);
     }
 
+    /**
+     * HCZ：打印指定分类的Option的help信息
+     */
     void help(Log log, OptionKind kind) {
-        //HCZ：打印指定分类的Option的help信息
         if (this.kind != kind)
             return;
 
@@ -705,8 +724,11 @@ public enum Option {
 
     }
 
+    /**
+     * HCZ：为当前Option对应的命令行参数配置构造help信息
+     */
     private String helpSynopsis(Log log) {
-        //HCZ：为当前Option对应的命令行参数配置构造help信息
+        //
         StringBuilder sb = new StringBuilder();
         sb.append(text);
         if (argsNameKey == null) {
@@ -731,7 +753,7 @@ public enum Option {
         return sb.toString();
     }
 
-    // For -XpkgInfo:value
+    // For -XpkgInfo:value，HCZ：X
     public enum PkgInfo {
         /**
          * Always generate package-info.class for every package-info.java file.
@@ -763,8 +785,10 @@ public enum Option {
         }
     }
 
+    /**
+     * HCZ：将Lint.LintCategory的枚举值构造成Map，如：[{"classfile", false}, {"-classfile", false}....]
+     */
     private static Map<String,Boolean> getXLintChoices() {
-        //HCZ：将Lint.LintCategory的枚举值构造成Map，如：[{"classfile", false}, {"-classfile", false}....]
         Map<String,Boolean> choices = new LinkedHashMap<String,Boolean>();
         choices.put("all", false);
         for (Lint.LintCategory c : Lint.LintCategory.values())
@@ -775,28 +799,35 @@ public enum Option {
         return choices;
     }
 
+    /**
+     * HCZ：获得Option所有枚举值列表
+     */
     static Set<Option> getJavaCompilerOptions() {
-        //HCZ：获得Option所有枚举值列表
         return EnumSet.allOf(Option.class);
     }
 
+    /**
+     * HCZ：获得FileManager分组的Option枚举值列表
+     */
     public static Set<Option> getJavacFileManagerOptions() {
-        //HCZ：获得FileManager分组的Option枚举值列表
         return getOptions(EnumSet.of(FILEMANAGER));
     }
 
+    /**
+     * HCZ：获得Basic分组的Option枚举值列表
+     */
     public static Set<Option> getJavacToolOptions() {
-        //HCZ：获得Basic分组的Option枚举值列表
         return getOptions(EnumSet.of(BASIC));
     }
 
+    /**
+     * HCZ：过滤出指定分组的Option枚举值集合
+     */
     static Set<Option> getOptions(Set<OptionGroup> desired) {
-        //HCZ：过滤出指定分组的Option枚举值集合
         Set<Option> options = EnumSet.noneOf(Option.class);
         for (Option option : Option.values())
             if (desired.contains(option.group))
                 options.add(option);
         return Collections.unmodifiableSet(options);
     }
-
 }

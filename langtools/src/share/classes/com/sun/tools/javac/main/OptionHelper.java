@@ -30,6 +30,7 @@ import com.sun.tools.javac.util.Log.PrefixKind;
 import java.io.File;
 
 /**
+ * HCZ：X
  * Helper object to be used by {@link Option#process}, providing access to
  * the compilation environment.
  *
@@ -38,7 +39,6 @@ import java.io.File;
  * risk.  This code and its internal interfaces are subject to change
  * or deletion without notice.</b></p>
  */
-
 public abstract class OptionHelper {
 
     /** Get the current value of an option. */
@@ -113,5 +113,4 @@ public abstract class OptionHelper {
             throw new IllegalArgumentException(s);
         }
     }
-
 }
