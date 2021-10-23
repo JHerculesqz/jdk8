@@ -28,6 +28,8 @@ package com.sun.tools.javac.api;
 import java.util.Locale;
 
 /**
+ * HCZ：有国际化toString需求的类都要实现此接口
+ *
  * This interface must be implemented by any javac class that has non-trivial
  * formatting needs (e.g. where toString() does not apply because of localization).
  *

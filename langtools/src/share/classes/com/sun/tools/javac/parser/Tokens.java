@@ -37,7 +37,11 @@ import com.sun.tools.javac.util.Filter;
 import com.sun.tools.javac.util.ListBuffer;
 import com.sun.tools.javac.util.Names;
 
-/** A class that defines codes/utilities for Java source tokens
+
+/**
+ * HCZ：Tokens对象
+ *
+ *  A class that defines codes/utilities for Java source tokens
  *  returned from lexical analysis.
  *
  *  <p><b>This is NOT part of any supported API.
@@ -46,25 +50,41 @@ import com.sun.tools.javac.util.Names;
  *  deletion without notice.</b>
  */
 public class Tokens {
-
+    /**
+     * HCZ：Names对象
+     */
     private final Names names;
 
     /**
+     * HCZ：建立Name对象的Index->Token对象的映射
+     *
      * Keyword array. Maps name indices to Token.
      */
     private final TokenKind[] key;
 
-    /**  The number of the last entered keyword.
+    /**
+     * HCZ：记录Name对象在Table中的最大Index
+     *
+     *  The number of the last entered keyword.
      */
     private int maxKey = 0;
 
-    /** The names of all tokens.
+    /**
+     * HCZ：每个TokenKind的枚举值的序号作为数组下标，用于建立token序号->Name对象的映射关系。
+     *
+     *  The names of all tokens.
      */
     private Name[] tokenName = new Name[TokenKind.values().length];
 
+    /**
+     * HCZ：在上下文对象中，加入Tokens对象缓存
+     */
     public static final Context.Key<Tokens> tokensKey =
         new Context.Key<Tokens>();
 
+    /**
+     * HCZ：创建Tokens实例，如果在Context对象能够获取到，则直接返回
+     */
     public static Tokens instance(Context context) {
         Tokens instance = context.get(tokensKey);
         if (instance == null)
@@ -72,16 +92,27 @@ public class Tokens {
         return instance;
     }
 
+    /**
+     * HCZ：创建Tokens实例
+     */
     protected Tokens(Context context) {
+        //HCZ：加到上下文对象中
         context.put(tokensKey, this);
+        //HCZ：创建Names对象
         names = Names.instance(context);
+        //HCZ：遍历TokenKind的枚举值列表
         for (TokenKind t : TokenKind.values()) {
+            //HCZ：如果枚举值.name不为空，则
             if (t.name != null)
+                //HCZ：建立token枚举值序号->Name对象的映射
                 enterKeyword(t.name, t);
+            //HCZ：如果枚举值.name为空，则
             else
+                //HCZ：建立token枚举值序号->null的映射
                 tokenName[t.ordinal()] = null;
         }
 
+        //HCZ：建立Name对象的Index->Token对象的映射
         key = new TokenKind[maxKey+1];
         for (int i = 0; i <= maxKey; i++) key[i] = TokenKind.IDENTIFIER;
         for (TokenKind t : TokenKind.values()) {
@@ -90,13 +121,21 @@ public class Tokens {
         }
     }
 
+    /**
+     * HCZ：建立token枚举值序号->Name对象的映射
+     */
     private void enterKeyword(String s, TokenKind token) {
+        //HCZ：根据字符串s，生成Name对象
         Name n = names.fromString(s);
+        //HCZ：建立token枚举值序号->Name对象的映射
         tokenName[token.ordinal()] = n;
+        //HCZ：记录Name对象在Table中的最大Index
         if (n.getIndex() > maxKey) maxKey = n.getIndex();
     }
 
     /**
+     * HCZ：根据Name对象，查找TokenKind对象
+     *
      * Create a new token given a name; if the name corresponds to a token name,
      * a new token of the corresponding kind is returned; otherwise, an
      * identifier token is returned.
@@ -105,150 +144,176 @@ public class Tokens {
         return (name.getIndex() > maxKey) ? TokenKind.IDENTIFIER : key[name.getIndex()];
     }
 
+    /**
+     * HCZ：根据字符串，找到Name对象，进而查找TokenKind对象
+     */
     TokenKind lookupKind(String name) {
         return lookupKind(names.fromString(name));
     }
 
     /**
+     * HCZ：Token枚举类
+     *
      * This enum defines all tokens used by the javac scanner. A token is
      * optionally associated with a name.
      */
     public enum TokenKind implements Formattable, Filter<TokenKind> {
-        EOF(),
-        ERROR(),
-        IDENTIFIER(Tag.NAMED),
-        ABSTRACT("abstract"),
-        ASSERT("assert", Tag.NAMED),
-        BOOLEAN("boolean", Tag.NAMED),
-        BREAK("break"),
-        BYTE("byte", Tag.NAMED),
-        CASE("case"),
-        CATCH("catch"),
-        CHAR("char", Tag.NAMED),
-        CLASS("class"),
-        CONST("const"),
-        CONTINUE("continue"),
-        DEFAULT("default"),
-        DO("do"),
-        DOUBLE("double", Tag.NAMED),
-        ELSE("else"),
-        ENUM("enum", Tag.NAMED),
-        EXTENDS("extends"),
-        FINAL("final"),
-        FINALLY("finally"),
-        FLOAT("float", Tag.NAMED),
-        FOR("for"),
-        GOTO("goto"),
-        IF("if"),
-        IMPLEMENTS("implements"),
-        IMPORT("import"),
-        INSTANCEOF("instanceof"),
-        INT("int", Tag.NAMED),
-        INTERFACE("interface"),
-        LONG("long", Tag.NAMED),
-        NATIVE("native"),
-        NEW("new"),
-        PACKAGE("package"),
-        PRIVATE("private"),
-        PROTECTED("protected"),
-        PUBLIC("public"),
-        RETURN("return"),
-        SHORT("short", Tag.NAMED),
-        STATIC("static"),
-        STRICTFP("strictfp"),
-        SUPER("super", Tag.NAMED),
-        SWITCH("switch"),
-        SYNCHRONIZED("synchronized"),
-        THIS("this", Tag.NAMED),
-        THROW("throw"),
-        THROWS("throws"),
-        TRANSIENT("transient"),
-        TRY("try"),
-        VOID("void", Tag.NAMED),
-        VOLATILE("volatile"),
-        WHILE("while"),
-        INTLITERAL(Tag.NUMERIC),
-        LONGLITERAL(Tag.NUMERIC),
-        FLOATLITERAL(Tag.NUMERIC),
-        DOUBLELITERAL(Tag.NUMERIC),
-        CHARLITERAL(Tag.NUMERIC),
-        STRINGLITERAL(Tag.STRING),
-        TRUE("true", Tag.NAMED),
-        FALSE("false", Tag.NAMED),
-        NULL("null", Tag.NAMED),
-        UNDERSCORE("_", Tag.NAMED),
-        ARROW("->"),
-        COLCOL("::"),
-        LPAREN("("),
-        RPAREN(")"),
-        LBRACE("{"),
-        RBRACE("}"),
-        LBRACKET("["),
-        RBRACKET("]"),
-        SEMI(";"),
-        COMMA(","),
-        DOT("."),
-        ELLIPSIS("..."),
-        EQ("="),
-        GT(">"),
-        LT("<"),
-        BANG("!"),
-        TILDE("~"),
-        QUES("?"),
-        COLON(":"),
-        EQEQ("=="),
-        LTEQ("<="),
-        GTEQ(">="),
-        BANGEQ("!="),
-        AMPAMP("&&"),
-        BARBAR("||"),
-        PLUSPLUS("++"),
-        SUBSUB("--"),
-        PLUS("+"),
-        SUB("-"),
-        STAR("*"),
-        SLASH("/"),
-        AMP("&"),
-        BAR("|"),
-        CARET("^"),
-        PERCENT("%"),
-        LTLT("<<"),
-        GTGT(">>"),
-        GTGTGT(">>>"),
-        PLUSEQ("+="),
-        SUBEQ("-="),
-        STAREQ("*="),
-        SLASHEQ("/="),
-        AMPEQ("&="),
-        BAREQ("|="),
-        CARETEQ("^="),
-        PERCENTEQ("%="),
-        LTLTEQ("<<="),
-        GTGTEQ(">>="),
-        GTGTGTEQ(">>>="),
-        MONKEYS_AT("@"),
+        EOF(),//HCZ：控制类型-读到EOF的Token，表示Token流结束
+        ERROR(),//HCZ：控制类型
+        IDENTIFIER(Tag.NAMED),//HCZ：标识符-泛指用户自定义的类名、包名、变量名、方法名等
+        ABSTRACT("abstract"),//HCZ：保留关键字-面向对象
+        ASSERT("assert", Tag.NAMED),//HCZ：保留关键字-断言
+        BOOLEAN("boolean", Tag.NAMED),//HCZ：保留关键字-数据类型
+        BREAK("break"),//HCZ：保留关键字-控制语句
+        BYTE("byte", Tag.NAMED),//HCZ：保留关键字-数据类型
+        CASE("case"),//HCZ：保留关键字-控制语句
+        CATCH("catch"),//HCZ：保留关键字-异常处理
+        CHAR("char", Tag.NAMED),//HCZ：保留关键字-数据类型
+        CLASS("class"),//HCZ：保留关键字-面向对象
+        CONST("const"),//HCZ：保留关键字-修饰符
+        CONTINUE("continue"),//HCZ：保留关键字-控制语句
+        DEFAULT("default"),//HCZ：保留关键字-控制语句/面向对象
+        DO("do"),//HCZ：保留关键字-控制语句
+        DOUBLE("double", Tag.NAMED),//HCZ：保留关键字-数据类型
+        ELSE("else"),//HCZ：保留关键字-控制语句
+        ENUM("enum", Tag.NAMED),//HCZ：保留关键字-数据类型
+        EXTENDS("extends"),//HCZ：保留关键字-面向对象
+        FINAL("final"),//HCZ：保留关键字-面向对象
+        FINALLY("finally"),//HCZ：保留关键字-异常处理
+        FLOAT("float", Tag.NAMED),//HCZ：保留关键字-数据类型
+        FOR("for"),//HCZ：保留关键字-控制语句
+        GOTO("goto"),//HCZ：保留关键字-控制语句
+        IF("if"),//HCZ：保留关键字-控制语句
+        IMPLEMENTS("implements"),//HCZ：保留关键字-面向对象
+        IMPORT("import"),//HCZ：保留关键字-代码组织结构
+        INSTANCEOF("instanceof"),//HCZ：保留关键字-面向对象
+        INT("int", Tag.NAMED),//HCZ：保留关键字-数据类型
+        INTERFACE("interface"),//HCZ：保留关键字-面向对象
+        LONG("long", Tag.NAMED),//HCZ：保留关键字-数据类型
+        NATIVE("native"),//HCZ：保留关键字-JNI
+        NEW("new"),//HCZ：保留关键字-面向对象
+        PACKAGE("package"),//HCZ：保留关键字-代码组织结构
+        PRIVATE("private"),//HCZ：保留关键字-面向对象
+        PROTECTED("protected"),//HCZ：保留关键字-面向对象
+        PUBLIC("public"),//HCZ：保留关键字-面向对象
+        RETURN("return"),//HCZ：保留关键字-控制语句
+        SHORT("short", Tag.NAMED),//HCZ：保留关键字-数据类型
+        STATIC("static"),//HCZ：保留关键字-面向对象
+        STRICTFP("strictfp"),//HCZ：保留关键字-面向对象
+        SUPER("super", Tag.NAMED),//HCZ：保留关键字-面向对象
+        SWITCH("switch"),//HCZ：保留关键字-控制语句
+        SYNCHRONIZED("synchronized"),//HCZ：保留关键字-多线程
+        THIS("this", Tag.NAMED),//HCZ：保留关键字-面向对象
+        THROW("throw"),//HCZ：保留关键字-异常处理
+        THROWS("throws"),//HCZ：保留关键字-异常处理
+        TRANSIENT("transient"),//HCZ：保留关键字-序列化
+        TRY("try"),//HCZ：保留关键字-异常处理
+        VOID("void", Tag.NAMED),//HCZ：保留关键字-方法
+        VOLATILE("volatile"),//HCZ：保留关键字-多线程
+        WHILE("while"),//HCZ：保留关键字-控制语句
+        INTLITERAL(Tag.NUMERIC),//HCZ：字面量
+        LONGLITERAL(Tag.NUMERIC),//HCZ：字面量
+        FLOATLITERAL(Tag.NUMERIC),//HCZ：字面量
+        DOUBLELITERAL(Tag.NUMERIC),//HCZ：字面量
+        CHARLITERAL(Tag.NUMERIC),//HCZ：字面量
+        STRINGLITERAL(Tag.STRING),//HCZ：字面量
+        TRUE("true", Tag.NAMED),//HCZ：字面量
+        FALSE("false", Tag.NAMED),//HCZ：字面量
+        NULL("null", Tag.NAMED),//HCZ：字面量
+        UNDERSCORE("_", Tag.NAMED),//HCZ：标识符
+        ARROW("->"),//HCZ：标识符
+        COLCOL("::"),//HCZ：标识符
+        LPAREN("("),//HCZ：标识符
+        RPAREN(")"),//HCZ：标识符
+        LBRACE("{"),//HCZ：标识符
+        RBRACE("}"),//HCZ：标识符
+        LBRACKET("["),//HCZ：标识符
+        RBRACKET("]"),//HCZ：标识符
+        SEMI(";"),//HCZ：标识符
+        COMMA(","),//HCZ：标识符
+        DOT("."),//HCZ：标识符
+        ELLIPSIS("..."),//HCZ：标识符
+        EQ("="),//HCZ：标识符
+        GT(">"),//HCZ：标识符
+        LT("<"),//HCZ：标识符
+        BANG("!"),//HCZ：标识符
+        TILDE("~"),//HCZ：标识符
+        QUES("?"),//HCZ：标识符
+        COLON(":"),//HCZ：标识符
+        EQEQ("=="),//HCZ：标识符
+        LTEQ("<="),//HCZ：标识符
+        GTEQ(">="),//HCZ：标识符
+        BANGEQ("!="),//HCZ：标识符
+        AMPAMP("&&"),//HCZ：标识符
+        BARBAR("||"),//HCZ：标识符
+        PLUSPLUS("++"),//HCZ：标识符
+        SUBSUB("--"),//HCZ：标识符
+        PLUS("+"),//HCZ：标识符
+        SUB("-"),//HCZ：标识符
+        STAR("*"),//HCZ：标识符
+        SLASH("/"),//HCZ：标识符
+        AMP("&"),//HCZ：标识符
+        BAR("|"),//HCZ：标识符
+        CARET("^"),//HCZ：标识符
+        PERCENT("%"),//HCZ：标识符
+        LTLT("<<"),//HCZ：标识符
+        GTGT(">>"),//HCZ：标识符
+        GTGTGT(">>>"),//HCZ：标识符
+        PLUSEQ("+="),//HCZ：标识符
+        SUBEQ("-="),//HCZ：标识符
+        STAREQ("*="),//HCZ：标识符
+        SLASHEQ("/="),//HCZ：标识符
+        AMPEQ("&="),//HCZ：标识符
+        BAREQ("|="),//HCZ：标识符
+        CARETEQ("^="),//HCZ：标识符
+        PERCENTEQ("%="),//HCZ：标识符
+        LTLTEQ("<<="),//HCZ：标识符
+        GTGTEQ(">>="),//HCZ：标识符
+        GTGTGTEQ(">>>="),//HCZ：标识符
+        MONKEYS_AT("@"),//HCZ：标识符
         CUSTOM;
 
+        /**
+         * HCZ：Token的Name
+         */
         public final String name;
+        /**
+         * HCZ：Token的Tag
+         */
         public final Tag tag;
 
+        /**
+         * HCZ：X
+         */
         TokenKind() {
             this(null, Tag.DEFAULT);
         }
 
+        /**
+         * HCZ：X
+         */
         TokenKind(String name) {
             this(name, Tag.DEFAULT);
         }
 
+        /**
+         * HCZ：X
+         */
         TokenKind(Tag tag) {
             this(null, tag);
         }
 
+        /**
+         * HCZ：X
+         */
         TokenKind(String name, Tag tag) {
             this.name = name;
             this.tag = tag;
         }
 
+        /**
+         * HCZ：实现国际化版本的toString
+         */
         public String toString() {
             switch (this) {
             case IDENTIFIER:
@@ -277,20 +342,33 @@ public class Tokens {
             }
         }
 
+        /**
+         * HCZ：实现国际化版本的toString
+         */
         public String getKind() {
             return "Token";
         }
 
+        /**
+         * HCZ：实现国际化版本的toString
+         */
         public String toString(Locale locale, Messages messages) {
             return name != null ? toString() : messages.getLocalizedString(locale, "compiler.misc." + toString());
         }
 
+        /**
+         * HCZ：实现比较过滤的接口
+         */
         @Override
         public boolean accepts(TokenKind that) {
+            //HCZ：？待研究用==
             return this == that;
         }
     }
 
+    /**
+     * HCZ：？
+     */
     public interface Comment {
 
         enum CommentStyle {
@@ -306,6 +384,8 @@ public class Tokens {
     }
 
     /**
+     * HCZ：？
+     *
      * This is the class representing a javac token. Each token has several fields
      * that are set by the javac lexer (i.e. start/end position, string value, etc).
      */
@@ -413,6 +493,9 @@ public class Tokens {
         }
     }
 
+    /**
+     * HCZ：？
+     */
     final static class NamedToken extends Token {
         /** The name of this token */
         public final Name name;
@@ -434,6 +517,9 @@ public class Tokens {
         }
     }
 
+    /**
+     * HCZ：？
+     */
     static class StringToken extends Token {
         /** The string value of this token */
         public final String stringVal;
@@ -455,6 +541,9 @@ public class Tokens {
         }
     }
 
+    /**
+     * HCZ：？
+     */
     final static class NumericToken extends StringToken {
         /** The 'radix' value of this token */
         public final int radix;
@@ -476,6 +565,9 @@ public class Tokens {
         }
     }
 
+    /**
+     * HCZ：？
+     */
     public static final Token DUMMY =
                 new Token(TokenKind.ERROR, 0, 0, null);
 }

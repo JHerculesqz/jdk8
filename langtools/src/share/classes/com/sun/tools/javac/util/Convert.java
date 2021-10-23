@@ -171,7 +171,10 @@ public class Convert {
         return utf2string(src, 0, src.length);
     }
 
-    /** Copy characters in source array to bytes in target array,
+    /**
+     * HCZ：将char数组，转换为UTF-8的byte数组
+     *
+     *  Copy characters in source array to bytes in target array,
      *  converting them to Utf8 representation.
      *  The target array must be large enough to hold the result.
      *  returns first index in `dst' past the last copied byte.
@@ -189,12 +192,17 @@ public class Convert {
         int limit = sindex + len;
         for (int i = sindex; i < limit; i++) {
             char ch = src[i];
+            //HCZ：根据编码规则，此字符使用1个字节表示
             if (1 <= ch && ch <= 0x7F) {
                 dst[j++] = (byte)ch;
-            } else if (ch <= 0x7FF) {
+            }
+            //HCZ：根据编码规则，此字符使用2个字节表示
+            else if (ch <= 0x7FF) {
                 dst[j++] = (byte)(0xC0 | (ch >> 6));
                 dst[j++] = (byte)(0x80 | (ch & 0x3F));
-            } else {
+            }
+            //HCZ：根据编码规则，此字符使用3个字节表示
+            else {
                 dst[j++] = (byte)(0xE0 | (ch >> 12));
                 dst[j++] = (byte)(0x80 | ((ch >> 6) & 0x3F));
                 dst[j++] = (byte)(0x80 | (ch & 0x3F));

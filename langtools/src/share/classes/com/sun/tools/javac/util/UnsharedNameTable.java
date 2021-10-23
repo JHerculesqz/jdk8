@@ -28,6 +28,8 @@ package com.sun.tools.javac.util;
 import java.lang.ref.WeakReference;
 
 /**
+ * HCZ：X-类似SHaredNameTable类，内部缓存的实现有差异。
+ *
  * Implementation of Name.Table that stores names in individual arrays
  * using weak references. It is recommended for use when a single shared
  * byte array is unsuitable.

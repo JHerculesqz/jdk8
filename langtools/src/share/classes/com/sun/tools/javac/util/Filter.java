@@ -26,6 +26,8 @@
 package com.sun.tools.javac.util;
 
 /**
+ * HCZ：过滤器接口
+ *
  * Simple filter acting as a boolean predicate. Method accepts return true if
  * the supplied element matches against the filter.
  */
