@@ -57,6 +57,8 @@ import static com.sun.tools.javac.main.Option.OptionKind.HIDDEN;
 import static com.sun.tools.javac.main.Option.OptionKind.STANDARD;
 
 /**
+ * HCZ：Option枚举类，记录了所有javac支持的option
+ *
  * Options for javac. The specific Option to handle a command-line option
  * is identified by searching the members of this enum in order, looking
  * the first {@link #matches match}. The action for an Option is performed
@@ -478,7 +480,10 @@ public enum Option {
         }
     };
 
-    /** The kind of an Option. This is used by the -help and -X options.*/
+    /**
+     * HCZ：Option类型包括标准选项、扩展选项、隐藏选项
+     *
+     *  The kind of an Option. This is used by the -help and -X options.*/
     public enum OptionKind {
         /** A standard option, documented by -help. */
         STANDARD,
@@ -488,7 +493,10 @@ public enum Option {
         HIDDEN,
     }
 
-    /** The group for an Option. This determines the situations in which the
+    /**
+     * HCZ：Option分组类型包括基础分组、文件管理器分组、信息组、操作组
+     *
+     *  The group for an Option. This determines the situations in which the
      * option is applicable.
      */
     enum OptionGroup {
@@ -504,7 +512,10 @@ public enum Option {
         OPERAND
     }
 
-    /** The kind of choice for "choice" options. */
+    /**
+     * HCZ:?待研究。ChoiceOption的类型OneOf和AnyOf
+     *
+     *  The kind of choice for "choice" options. */
     enum ChoiceKind {
         /** The expected value is exactly one of the set of choices. */
         ONEOF,
@@ -529,24 +540,28 @@ public enum Option {
 
     /**
      * HCZ:命令配置的argsNameKey
+     *
      * Documentation key for arguments.
      */
     final String argsNameKey;
 
     /**
      * HCZ:命令配置的descrKey
+     *
      * Documentation key for description.
      */
     final String descrKey;
 
     /**
      * HCZ：命令配置是否具有后缀
+     *
      * Suffix option (-foo=bar or -foo:bar)
      */
     final boolean hasSuffix;
 
     /**
      * HCZ：javac的命令行参数配置的选择类型，可选值：其中任意1个、N个
+     *
      * The kind of choices for this option, if any.
      */
     final ChoiceKind choiceKind;
@@ -674,7 +689,7 @@ public enum Option {
     }
 
     /**
-     * HCZ：将待处理的option加入到OptionHelper对象
+     * HCZ：将待处理的option通过OptionHelper对象加入到Options对象中
      */
     public boolean process(OptionHelper helper, String option, String arg) {
         if (choices != null) {
@@ -728,7 +743,6 @@ public enum Option {
      * HCZ：为当前Option对应的命令行参数配置构造help信息
      */
     private String helpSynopsis(Log log) {
-        //
         StringBuilder sb = new StringBuilder();
         sb.append(text);
         if (argsNameKey == null) {

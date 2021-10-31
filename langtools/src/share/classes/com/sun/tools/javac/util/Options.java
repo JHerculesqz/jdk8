@@ -29,7 +29,10 @@ import java.util.*;
 import com.sun.tools.javac.main.Option;
 import static com.sun.tools.javac.main.Option.*;
 
-/** A table of all command-line options.
+/**
+ * HCZ：记录javac的命令行参数的name和value集合
+ *
+ *  A table of all command-line options.
  *  If an option has an argument, the option name is mapped to the argument.
  *  If a set option has no argument, it is mapped to itself.
  *
@@ -39,15 +42,27 @@ import static com.sun.tools.javac.main.Option.*;
  *  deletion without notice.</b>
  */
 public class Options {
+    /**
+     * HCZ:X
+     */
     private static final long serialVersionUID = 0;
 
-    /** The context key for the options. */
+    /**
+     * HCZ：X
+     *
+     * The context key for the options. */
     public static final Context.Key<Options> optionsKey =
         new Context.Key<Options>();
 
+    /**
+     * HCZ:key是option的text，value是option的value
+     */
     private LinkedHashMap<String,String> values;
 
-    /** Get the Options instance for this context. */
+    /**
+     * HCZ:X
+     *
+     *  Get the Options instance for this context. */
     public static Options instance(Context context) {
         Options instance = context.get(optionsKey);
         if (instance == null)
@@ -55,6 +70,9 @@ public class Options {
         return instance;
     }
 
+    /**
+     * HCZ:X
+     */
     protected Options(Context context) {
 // DEBUGGING -- Use LinkedHashMap for reproducability
         values = new LinkedHashMap<String,String>();
@@ -62,6 +80,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据name，获得option的value
+     *
      * Get the value for an undocumented option.
      */
     public String get(String name) {
@@ -69,6 +89,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option对象，获得option的value
+     *
      * Get the value for an option.
      */
     public String get(Option option) {
@@ -76,6 +98,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option的name，获得option的value的布尔值
+     *
      * Get the boolean value for an option, patterned after Boolean.getBoolean,
      * essentially will return true, iff the value exists and is set to "true".
      */
@@ -84,6 +108,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option对象的name，获得option的value的布尔值，如果找不到则返回默认值
+     *
      * Get the boolean with a default value if the option is not set.
      */
     public boolean getBoolean(String name, boolean defaultValue) {
@@ -92,6 +118,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option的name，判断javac的命令行参数中已经设置了该option
+     *
      * Check if the value for an undocumented option has been set.
      */
     public boolean isSet(String name) {
@@ -99,6 +127,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option对象，判断javac的命令行参数中已经设置了该option
+     *
      * Check if the value for an option has been set.
      */
     public boolean isSet(Option option) {
@@ -106,6 +136,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option的name+option的value，判断javac的命令行参数中已经设置了该option——特别用于choiceOption
+     *
      * Check if the value for a choice option has been set to a specific value.
      */
     public boolean isSet(Option option, String value) {
@@ -113,6 +145,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option的name，判断javac的命令行参数中没有设置该option
+     *
      * Check if the value for an undocumented option has not been set.
      */
     public boolean isUnset(String name) {
@@ -120,6 +154,8 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option对象，判断javac的命令行参数中没有设置该option
+     *
      * Check if the value for an option has not been set.
      */
     public boolean isUnset(Option option) {
@@ -127,50 +163,79 @@ public class Options {
     }
 
     /**
+     * HCZ：根据option的name+option的value，判断javac的命令行参数中没有设置该option——特别用于choiceOption
+     *
      * Check if the value for a choice option has not been set to a specific value.
      */
     public boolean isUnset(Option option, String value) {
         return (values.get(option.text + value) == null);
     }
 
+    /**
+     * HCZ:向options对象中添加新的option对象
+     */
     public void put(String name, String value) {
         values.put(name, value);
     }
 
+    /**
+     * HCZ:向options对象中添加新的option对象
+     */
     public void put(Option option, String value) {
         values.put(option.text, value);
     }
 
+    /**
+     * HCZ:X
+     */
     public void putAll(Options options) {
         values.putAll(options.values);
     }
 
+    /**
+     * HCZ:根据option的name，删除option的value
+     */
     public void remove(String name) {
         values.remove(name);
     }
 
+    /**
+     * HCZ:得到所有的option对象的name集合
+     */
     public Set<String> keySet() {
         return values.keySet();
     }
 
+    /**
+     * HCZ：获得option对象集合的size
+     */
     public int size() {
         return values.size();
     }
 
     // light-weight notification mechanism
-
+    /**
+     * HCZ：轻量级通知机制-记录Runnable对象形式的监听器
+     */
     private List<Runnable> listeners = List.nil();
-
+    /**
+     * HCZ：轻量级通知机制-添加Runnable对象形式的监听器
+     */
     public void addListener(Runnable listener) {
         listeners = listeners.prepend(listener);
     }
-
+    /**
+     * HCZ：轻量级通知机制-遍历已经存在的Runnable对象形式的监听器集合，触发Runnable对象#run()方法
+     */
     public void notifyListeners() {
         for (Runnable r: listeners)
             r.run();
     }
 
-    /** Check for a lint suboption. */
+    /**
+     * HCZ：检查xlint命令的子项配置
+     *
+     *  Check for a lint suboption. */
     public boolean lint(String s) {
         // return true if either the specific option is enabled, or
         // they are all enabled without the specific one being

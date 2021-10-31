@@ -30,7 +30,11 @@ import com.sun.tools.javac.util.Log.PrefixKind;
 import java.io.File;
 
 /**
- * HCZ：X
+ * HCZ：Option工具类(抽象类)，使用方式：
+ * 调用方会维护一个options对象、File对象集合。
+ * 调用方会维护一个OptionHelper对象，通过匿名类实现该抽象类or通过override实现了部分接口的GrumpyHelper类
+ *  override抽象类的方法时，本质就是对options对象、File对象集合、classnames的CURD
+ *
  * Helper object to be used by {@link Option#process}, providing access to
  * the compilation environment.
  *
@@ -41,31 +45,58 @@ import java.io.File;
  */
 public abstract class OptionHelper {
 
-    /** Get the current value of an option. */
+    /**
+     * HCZ：根据option对象，获得该对象的value
+     *
+     *  Get the current value of an option. */
     public abstract String get(Option option);
 
-    /** Set the value of an option. */
+    /**
+     * HCZ：向options中添加新的[option的name, option的value]
+     *
+     *  Set the value of an option. */
     public abstract void put(String name, String value);
 
-    /** Remove any prior value for an option. */
+    /**
+     * HCZ：根据option的name，删除options中对应的option对象
+     *
+     *  Remove any prior value for an option. */
     public abstract void remove(String name);
 
-    /** Get access to the Log for the compilation. */
+    /**
+     * HCZ：获得日志对象
+     *
+     * Get access to the Log for the compilation. */
     public abstract Log getLog();
 
-    /** Get the name of the tool, such as "javac", to be used in info like -help. */
+    /**
+     * HCZ：获得ownName
+     *
+     *  Get the name of the tool, such as "javac", to be used in info like -help. */
     public abstract String getOwnName();
 
-    /** Report an error. */
+    /**
+     * HCZ：记录日志
+     *
+     *  Report an error. */
     abstract void error(String key, Object... args);
 
-    /** Record a file to be compiled. */
+    /**
+     * HCZ：记录File对象到File对象集合中
+     *
+     *  Record a file to be compiled. */
     abstract void addFile(File f);
 
-    /** Record the name of a class for annotation processing. */
+    /**
+     * HCZ：记录className到classnames中
+     *
+     *  Record the name of a class for annotation processing. */
     abstract void addClassName(String s);
 
-    /** An implementation of OptionHelper that mostly throws exceptions. */
+    /**
+     * HCZ：实现一个"暴躁老哥"，大部分接口都是需要继续override的(不override就直接抛异常)
+     *
+     *  An implementation of OptionHelper that mostly throws exceptions. */
     public static class GrumpyHelper extends OptionHelper {
         private final Log log;
 
