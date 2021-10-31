@@ -26,7 +26,8 @@
 package com.sun.tools.javac.util;
 
 /**
- * HCZ：Names对象，包含N个Name对象，所属的Table对象
+ * HCZ：Names对象，包含Java内置的标准的N个Name对象，以及所属的Table对象。
+ * 本质是将源代码中的单词、符号分词了，每个分词就是一个Name，但是相同分词用同一个Name对象表达。
  *
  * Access to the compiler's name table.  STandard names are defined,
  * as well as methods to create new names.

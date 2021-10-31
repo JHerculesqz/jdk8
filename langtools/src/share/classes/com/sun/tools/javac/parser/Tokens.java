@@ -56,7 +56,7 @@ public class Tokens {
     private final Names names;
 
     /**
-     * HCZ：建立Name对象的Index->Token对象的映射
+     * HCZ：建立Name对象的Index->TokenKind对象的映射
      *
      * Keyword array. Maps name indices to Token.
      */
@@ -93,7 +93,14 @@ public class Tokens {
     }
 
     /**
-     * HCZ：创建Tokens实例
+     * HCZ：[调用链]创建Tokens、SharedNameTable、Names、Name实例
+     *  JavaCompiler#JavaCompiler(Context)
+     *      Names#Names(Context context)：初始化Names对象
+     *          SharedNameTable#SharedNameTable(Names, int hashSize, int nameSize)：初始化Names对象所属的Table对象
+     *          NameImpl#NameImpl(SharedNameTable)：初始化Names对象包含的各个Name对象
+     *      ParserFactory#ParserFactory(Context)：初始化ParserFactory对象
+     *          Tokens#Tokens(Context context)：初始化ParserFactory对象包含的Tokens对象
+     *              (Tokens对象会初始化"token枚举值序列号->Name对象"和"Name对象Index->TokenKind对象"的映射)
      */
     protected Tokens(Context context) {
         //HCZ：加到上下文对象中
@@ -102,7 +109,7 @@ public class Tokens {
         names = Names.instance(context);
         //HCZ：遍历TokenKind的枚举值列表
         for (TokenKind t : TokenKind.values()) {
-            //HCZ：如果枚举值.name不为空，则
+            //HCZ：如果枚举值.name不为空(关键点：有的TokenKind#name不为空，一般是关键字，如：abstract)，则
             if (t.name != null)
                 //HCZ：建立token枚举值序号->Name对象的映射
                 enterKeyword(t.name, t);
@@ -112,7 +119,7 @@ public class Tokens {
                 tokenName[t.ordinal()] = null;
         }
 
-        //HCZ：建立Name对象的Index->Token对象的映射
+        //HCZ：建立Name对象的Index->TokenKind对象的映射
         key = new TokenKind[maxKey+1];
         for (int i = 0; i <= maxKey; i++) key[i] = TokenKind.IDENTIFIER;
         for (TokenKind t : TokenKind.values()) {
@@ -367,31 +374,48 @@ public class Tokens {
     }
 
     /**
-     * HCZ：？
+     * HCZ：注释对象
      */
     public interface Comment {
-
+        /**
+         * HCZ：注释类型：行注释、注释块、JavaDoc
+         */
         enum CommentStyle {
             LINE,
             BLOCK,
             JAVADOC,
         }
 
+        /**
+         * HCZ：X
+         */
         String getText();
+        /**
+         * HCZ：X
+         */
         int getSourcePos(int index);
+        /**
+         * HCZ：X
+         */
         CommentStyle getStyle();
+        /**
+         * HCZ：X
+         */
         boolean isDeprecated();
     }
 
     /**
-     * HCZ：？
+     * HCZ：Token类
      *
      * This is the class representing a javac token. Each token has several fields
      * that are set by the javac lexer (i.e. start/end position, string value, etc).
      */
     public static class Token {
-
-        /** tags constants **/
+        /**
+         * HCZ：Token.Tag的类型：Default、Named、String、Numeric
+         *
+         *  tags constants
+         */
         enum Tag {
             DEFAULT,
             NAMED,
@@ -399,18 +423,36 @@ public class Tokens {
             NUMERIC;
         }
 
-        /** The token kind */
+        /**
+         * HCZ：此Token对象的TokenKind类型
+         *
+         *  The token kind
+         */
         public final TokenKind kind;
 
-        /** The start position of this token */
+        /**
+         * HCZ：此属性描述此Token对象位于UnicodeReader对象中维护的buf数组(详见UnicodeReader#buf属性)的开始位置
+         *
+         *  The start position of this token */
         public final int pos;
 
-        /** The end position of this token */
+        /**
+         * HCZ：此属性描述此Token对象位于UnicodeReader对象中维护的buf数组(详见UnicodeReader#buf属性)的结束位置
+         *
+         *  The end position of this token
+         */
         public final int endPos;
 
-        /** Comment reader associated with this token */
+        /**
+         * HCZ：记录此Token对象对应的一组注释对象
+         *
+         *  Comment reader associated with this token
+         */
         public final List<Comment> comments;
 
+        /**
+         * HCZ：构造函数，除了赋初值，顺便检查TokenKind是否合法
+         */
         Token(TokenKind kind, int pos, int endPos, List<Comment> comments) {
             this.kind = kind;
             this.pos = pos;
@@ -419,6 +461,9 @@ public class Tokens {
             checkKind();
         }
 
+        /**
+         * HCZ:X
+         */
         Token[] split(Tokens tokens) {
             if (kind.name.length() < 2 || kind.tag != Tag.DEFAULT) {
                 throw new AssertionError("Cant split" + kind);
@@ -436,25 +481,37 @@ public class Tokens {
             };
         }
 
+        /**
+         * HCZ：X
+         */
         protected void checkKind() {
             if (kind.tag != Tag.DEFAULT) {
                 throw new AssertionError("Bad token kind - expected " + Tag.STRING);
             }
         }
 
+        /**
+         * HCZ：禁止Token对象直接调用，必须由子类实现
+         */
         public Name name() {
             throw new UnsupportedOperationException();
         }
-
+        /**
+         * HCZ：禁止Token对象直接调用，必须由子类实现
+         */
         public String stringVal() {
             throw new UnsupportedOperationException();
         }
-
+        /**
+         * HCZ：禁止Token对象直接调用，必须由子类实现
+         */
         public int radix() {
             throw new UnsupportedOperationException();
         }
 
         /**
+         * HCZ：如果此Token对象找到N个注释对象，则返回第一个。
+         *
          * Preserve classic semantics - if multiple javadocs are found on the token
          * the last one is returned
          */
@@ -466,6 +523,8 @@ public class Tokens {
         }
 
         /**
+         * HCZ：判断注释对象中是否有@deprecated字符串
+         *
          * Preserve classic semantics - deprecated should be set if at least one
          * javadoc comment attached to this token contains the '@deprecated' string
          */
@@ -478,6 +537,9 @@ public class Tokens {
             return false;
         }
 
+        /**
+         * HCZ：X
+         */
         private List<Comment> getComments(Comment.CommentStyle style) {
             if (comments == null) {
                 return List.nil();
@@ -494,23 +556,35 @@ public class Tokens {
     }
 
     /**
-     * HCZ：？
+     * HCZ：Named类型的Token
      */
     final static class NamedToken extends Token {
-        /** The name of this token */
+        /**
+         * HCZ：X
+         *  The name of this token
+         */
         public final Name name;
 
+        /**
+         * HCZ：X
+         */
         public NamedToken(TokenKind kind, int pos, int endPos, Name name, List<Comment> comments) {
             super(kind, pos, endPos, comments);
             this.name = name;
         }
 
+        /**
+         * HCZ：X
+         */
         protected void checkKind() {
             if (kind.tag != Tag.NAMED) {
                 throw new AssertionError("Bad token kind - expected " + Tag.NAMED);
             }
         }
 
+        /**
+         * HCZ：X
+         */
         @Override
         public Name name() {
             return name;
@@ -518,23 +592,35 @@ public class Tokens {
     }
 
     /**
-     * HCZ：？
+     * HCZ：String类型的Token
      */
     static class StringToken extends Token {
-        /** The string value of this token */
+        /**
+         * HCZ：X
+         *  The string value of this token
+         */
         public final String stringVal;
 
+        /**
+         * HCZ：X
+         */
         public StringToken(TokenKind kind, int pos, int endPos, String stringVal, List<Comment> comments) {
             super(kind, pos, endPos, comments);
             this.stringVal = stringVal;
         }
 
+        /**
+         * HCZ：X
+         */
         protected void checkKind() {
             if (kind.tag != Tag.STRING) {
                 throw new AssertionError("Bad token kind - expected " + Tag.STRING);
             }
         }
 
+        /**
+         * HCZ：X
+         */
         @Override
         public String stringVal() {
             return stringVal;
@@ -542,23 +628,35 @@ public class Tokens {
     }
 
     /**
-     * HCZ：？
+     * HCZ：Numeric类型的Token
      */
     final static class NumericToken extends StringToken {
-        /** The 'radix' value of this token */
+        /**
+         * HCZ：X
+         *  The 'radix' value of this token
+         */
         public final int radix;
 
+        /**
+         * HCZ：X
+         */
         public NumericToken(TokenKind kind, int pos, int endPos, String stringVal, int radix, List<Comment> comments) {
             super(kind, pos, endPos, stringVal, comments);
             this.radix = radix;
         }
 
+        /**
+         * HCZ：X
+         */
         protected void checkKind() {
             if (kind.tag != Tag.NUMERIC) {
                 throw new AssertionError("Bad token kind - expected " + Tag.NUMERIC);
             }
         }
 
+        /**
+         * HCZ：X
+         */
         @Override
         public int radix() {
             return radix;
@@ -566,7 +664,7 @@ public class Tokens {
     }
 
     /**
-     * HCZ：？
+     * HCZ：Scanner对象解析Token的时候，给Token对象赋初值为DUMMY
      */
     public static final Token DUMMY =
                 new Token(TokenKind.ERROR, 0, 0, null);

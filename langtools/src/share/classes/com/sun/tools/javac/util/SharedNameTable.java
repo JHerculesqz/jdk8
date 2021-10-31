@@ -28,7 +28,7 @@ package com.sun.tools.javac.util;
 import java.lang.ref.SoftReference;
 
 /**
- * HCZ：Table对象
+ * HCZ：Table对象的具体实现
  *
  * Implementation of Name.Table that stores all names in a single shared
  * byte array, expanding it as needed. This avoids the overhead incurred
@@ -41,7 +41,7 @@ import java.lang.ref.SoftReference;
  */
 public class SharedNameTable extends Name.Table {
     /**
-     * HCZ：已经使用过的SharedNameTable对象的软引用列表
+     * HCZ：[关键点]已经使用过的SharedNameTable对象的软引用列表
      *
      * maintain a freelist of recently used name tables for reuse.
      */
@@ -69,7 +69,7 @@ public class SharedNameTable extends Name.Table {
     }
 
     /**
-     * HCZ：Name对象的HashTable，计算NameImpl对象的哈希值，存储在如下数组的特定位置。如果出现冲突，就是用NameImpl对象#next形成单链表。
+     * HCZ：[关键点]Name对象的HashTable，计算NameImpl对象的哈希值，存储在如下数组的特定位置。如果出现冲突，就是用NameImpl对象#next形成单链表。
      *
      *  The hash table for names.
      */
@@ -112,7 +112,7 @@ public class SharedNameTable extends Name.Table {
     }
 
     /**
-     * HCZ：构造函数
+     * HCZ：X
      */
     public SharedNameTable(Names names) {
         this(names, 0x8000, 0x20000);
@@ -172,7 +172,7 @@ public class SharedNameTable extends Name.Table {
     }
 
     /**
-     * HCZ：？根据byte数组生成Name对象
+     * HCZ：根据byte数组生成Name对象
      */
     @Override
     public Name fromUtf(byte[] cs, int start, int len) {
@@ -213,7 +213,7 @@ public class SharedNameTable extends Name.Table {
      */
     static class NameImpl extends Name {
         /**
-         * HCZ：HashTable中，下一个Name对象
+         * HCZ：[关键点]当Table对象中的发生了hash冲突时，next属性维护了单链表。
          *
          *  The next name occupying the same hash bucket.
          */

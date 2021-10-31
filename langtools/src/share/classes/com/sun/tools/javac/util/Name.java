@@ -198,6 +198,8 @@ public abstract class Name implements javax.lang.model.element.Name {
 
     /**
      * HCZ：从Table对象维护的bytes数组中，获取对应信息
+     * [关键点]Table将原始的源代码文件转换成了byte数组，用来提升性能。
+     * 如果需要操作Name对象(如：创建Name对象)，则需要从byte数组中获取对应byte子数组进行解析。
      *
      * Get a "reasonably small" value that uniquely identifies this name
      * within its name table.
@@ -243,7 +245,9 @@ public abstract class Name implements javax.lang.model.element.Name {
     public abstract int getByteOffset();
 
     /**
-     * HCZ：抽象类Table，1个Table对象包含1个Names对象，1个Names对象包含N个Name对象
+     * HCZ：抽象类Table，
+     * 1个Table对象包含1个Names对象，1个Names对象包含N个标准Name对象
+     * 1个Table对象包含N个标准+非标准Name对象
      *
      *  An abstraction for the hash table used to create unique Name instances.
      */
