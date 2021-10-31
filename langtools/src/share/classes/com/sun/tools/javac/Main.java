@@ -28,6 +28,8 @@ package com.sun.tools.javac;
 import java.io.PrintWriter;
 
 /**
+ * HCZ:javac的入口
+ *
  * The programmatic interface for the Java Programming Language
  * compiler, javac.
  */
@@ -46,7 +48,9 @@ public class Main {
     }
 
     /**
-     * HCZ：被Main调用。被CreateSymbols调用，但CreateSymbols是干啥的呢？
+     * HCZ：触发com.sun.tools.javac.main.Main#compile(String[] args)开始真正的前端编译
+     * (1)被Main#main(String[] args)调用
+     * (2)被CreateSymbols#main(String... args)调用——CreateSymbols是干啥的呢？
      *
      * Programmatic interface to the Java Programming Language
      * compiler, javac.
@@ -63,7 +67,8 @@ public class Main {
     }
 
     /**
-     * HCZ：被JavacTool调用，但JavacTool是干啥的？
+     * HCZ：触发com.sun.tools.javac.main.Main#compile(String[] args)开始真正的前端编译
+     * (1)被JavacTool#run(InputStream in, OutputStream out, OutputStream err, String... arguments)调用——JavacTool干啥的？
      *
      * Programmatic interface to the Java Programming Language
      * compiler, javac.

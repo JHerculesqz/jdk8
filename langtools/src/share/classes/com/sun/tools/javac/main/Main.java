@@ -58,7 +58,10 @@ import com.sun.tools.javac.util.Log.WriterKind;
 import com.sun.tools.javac.util.ServiceLoader;
 import static com.sun.tools.javac.main.Option.*;
 
-/** This class provides a command line interface to the javac compiler.
+/**
+ * HCZ：javac的命令行接口
+ *
+ *  This class provides a command line interface to the javac compiler.
  *
  *  <p><b>This is NOT part of any supported API.
  *  If you write code that depends on this, you do so at your own risk.
@@ -66,27 +69,29 @@ import static com.sun.tools.javac.main.Option.*;
  *  deletion without notice.</b>
  */
 public class Main {
-
-    /** HCZ：调用本类的构造函数时创建or传入的，其实就是javac
+    /** HCZ：调用本类构造函数时传入的，用于定位日志(其实就是javac)
+     *
      * The name of the compiler, for use in diagnostics.
      */
     String ownName;
 
     /**
-     * HCZ：调用本类的构造函数时创建or传入的。如：System.err的PrintWriter包装
+     * HCZ：调用本类构造函数时传入的。如：System.err的PrintWriter包装
      *
      * The writer to use for diagnostic output.
      */
     PrintWriter out;
 
     /**
-     * HCZ：调用本类的构造函数时创建or传入的。就是Log工具类的实例
+     * HCZ：调用本类构造函数时传入的。就是Log工具类的实例
+     *
      * The log to use for diagnostic output.
      */
     public Log log;
 
     /**
-     * HCZ：这个属性的作用就是在api模式下抛异常——JavacTaskImpl会调用setAPIMode，进而更新这个属性=true。javac命令行正常调用，此属性永远是false
+     * HCZ：这个属性的作用就是在api模式下抛异常——JavacTaskImpl会调用setAPIMode，进而更新这个属性=true。
+     * javac命令行正常调用，此属性永远是false
      *
      * If true, certain errors will cause an exception, such as command line
      * arg errors, or exceptions in user provided code.
@@ -95,6 +100,7 @@ public class Main {
 
     /**
      * HCZ：Main#compile的编译结果数据结构，仅仅表达编译成功or失败
+     *
      * Result codes.
      */
     public enum Result {
@@ -164,7 +170,6 @@ public class Main {
         public void addClassName(String s) {
             classnames.append(s);
         }
-
     };
 
     /**
@@ -192,17 +197,18 @@ public class Main {
     private Options options = null;
 
     /**
-     * HCZ：持有本类实例的调用方，直接给给此属性初始化，初始化为LinkedHashSet<File>。然后通过本类的optionHelper属性重载的addFile方法将javac跟着的文件列表加入到本属性中。
+     * HCZ：持有本类实例的调用方，直接给给此属性初始化，初始化为LinkedHashSet<File>。
+     * 然后通过本类的optionHelper属性重载的addFile方法将javac命令行中的文件列表加入到本属性中。
      *
      * The list of source files to process
      */
-    public Set<File> filenames = null; // XXX sb protected
+    public Set<File> filenames = null; // XXX sb protected  HCZ：你骂人？
 
     /**
-     * HCZ：
+     * HCZ：？待研究这个属性的作用
      * 在Main#compile方法中，将此属性初始化为ListBuffer<String>，
-     * 在Main#processArgs方法中，给此属性添加javac跟着的文件列表中对应的ClassName列表。
-     * 在Main#optionHelper属性重载的addClassName方法将javac跟着的文件列表加入到本属性中。
+     * 在Main#processArgs方法中，给此属性添加javac命令行中的文件列表中对应的ClassName列表。
+     * 在Main#optionHelper属性重载的addClassName方法将javac命令行中的文件列表加入到本属性中。
      *
      * List of class files names passed on the command line
      */
@@ -210,6 +216,7 @@ public class Main {
 
     /**
      * HCZ:封装了log对象，记录错误日志，给Main类调用
+     *
      * Report a usage error.
      */
     void error(String key, Object... args) {
@@ -257,7 +264,7 @@ public class Main {
     }
 
     /**
-     *  HCZ：参数的处理函数，没啥好仔细阅读的，debug一下就明白了。
+     * HCZ：参数的处理函数，没啥好仔细阅读的，debug一下就明白了。
      *
      *  Process command line arguments: store all command line options
      *  in `options' table and return all source filenames.
@@ -403,7 +410,10 @@ public class Main {
         }
 
     /**
-     * HCZ：被Main调用，触发Java源文件的compile
+     * HCZ：触发真正的前端编译。
+     * 实现：先经过一系列前戏准备，然后调用本类Main#compile(String[] args, String[] classNames, Context, List<JavaFileObject>, Iterable<? extends Processor>)
+     * 调用方：被com.sun.tools.javac.Main#compile(String[] args)或compile(String[] args, PrintWriter out)调用
+     *
      * Programmatic interface for main function.
      * @param args    The command line parameters.
      */
@@ -431,6 +441,7 @@ public class Main {
 
     /**
      * HCZ：X
+     *
      * Programmatic interface for main function.
      * @param args    The command line parameters.
      */
@@ -443,7 +454,10 @@ public class Main {
     }
 
     /**
-     * HCZ:被Main#compile(String[] args)调用，真正实现Java源码的compile
+     * HCZ:[关键点]被本类的Main#compile(String[] args)调用，真正实现Java源码的compile
+     * 本函数的微观逻辑属于流程性工作，除了各种"准备工作"与"善后工作"以外，核心调用有2处：
+     * 核心调用1：调用本类Main#processArgs(String[] flags, String[] classNames)处理命令行参数
+     * 核心调用2：调用JavaCompiler#compile(List<JavaFileObject>, List<String> classnames, Iterable<? extends Processor>)
      */
     public Result compile(String[] args,
                           String[] classNames,
@@ -479,7 +493,7 @@ public class Main {
             try {
                 //HCZ：调用Main#processArgs，获得命令行参数中的.java文件对象列表
                 files = processArgs(CommandLine.parse(args), classNames);
-                //HCZ：Main#processArgs竟然返回了null？，返回错误信息
+                //HCZ：如果Main#processArgs竟然返回的文件对象的列表是null，则返回错误信息
                 if (files == null) {
                     // null signals an error in options, abort
                     return Result.CMDERR;
@@ -492,7 +506,7 @@ public class Main {
                         || options.isSet(FULLVERSION))
                         return Result.OK;
                     if (JavaCompiler.explicitAnnotationProcessingRequested(options)) {
-                        //HCZ:还不太懂？
+                        //HCZ:？待研究
                         error("err.no.source.files.classes");
                     } else {
                         //HCZ:又不是-help这种参数配置，说明用户输入错了，返回错误
@@ -594,6 +608,7 @@ public class Main {
             if (!files.isEmpty()) {
                 // add filenames to fileObjects
                 //HCZ：这里为啥又要初始化一次JavaCompiler？
+                //HCZ：2021-10-31 Update，再看这段代码，instance方法保证不会重复初始化，但是写法容易让人误解。
                 comp = JavaCompiler.instance(context);
                 //HCZ：待研究，啥是otherFiles？
                 List<JavaFileObject> otherFiles = List.nil();
@@ -726,7 +741,7 @@ public class Main {
     }
 
     /**
-     * HCZ：打印指定类的.class文件路径和MD5.checksum。但啥时候用到？
+     * HCZ：打印指定类的.class文件路径和MD5.checksum。
      * Display the location and checksum of a class.
      */
     void showClass(String className) {
