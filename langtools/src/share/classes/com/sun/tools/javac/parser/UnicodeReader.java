@@ -36,7 +36,10 @@ import com.sun.tools.javac.util.Names;
 
 import static com.sun.tools.javac.util.LayoutCharacters.*;
 
-/** The char reader used by the javac lexer/tokenizer. Returns the sequence of
+/**
+ * HCZ：UnicodeReader对象，供JavaTokenizer对象使用
+ *
+ *  The char reader used by the javac lexer/tokenizer. Returns the sequence of
  * characters contained in the input stream, handling unicode escape accordingly.
  * Additionally, it provides features for saving chars into a buffer and to retrieve
  * them at a later stage.
@@ -47,31 +50,59 @@ import static com.sun.tools.javac.util.LayoutCharacters.*;
  *  deletion without notice.</b>
  */
 public class UnicodeReader {
-
-    /** The input buffer, index of next character to be read,
+    /**
+     * HCZ：保存了从Java源代码中读入的所有字符，最后一个元素为EOI(即0x1A，表示没有可读取的字符了)
+     *
+     *  The input buffer, index of next character to be read,
      *  index of one past last character in buffer.
      */
     protected char[] buf;
+    /**
+     * HCZ：当前要处理的字符在buf数组中的位置，初始化为-1
+     */
     protected int bp;
+    /**
+     * HCZ：保存了buf数组中可读字符的数量
+     */
     protected final int buflen;
 
-    /** The current character.
+    /**
+     * HCZ：当前待处理的字符
+     *
+     *  The current character.
      */
     protected char ch;
 
-    /** The buffer index of the last converted unicode character
+    /**
+     * HCZ：？
+     *
+     *  The buffer index of the last converted unicode character
      */
     protected int unicodeConversionBp = -1;
 
+    /**
+     * HCZ：Log对象
+     */
     protected Log log;
+    /**
+     * HCZ：Names对象
+     */
     protected Names names;
 
-    /** A character buffer for saved chars.
+    /**
+     * HCZ：某个Token对象的Name对象由N个字符组成(如：+=)，此数组暂存了两个字符(+、=)
+     *
+     *  A character buffer for saved chars.
      */
     protected char[] sbuf = new char[128];
+    /**
+     * HCZ：sbuf数组的可用下标，每调用一次nextToken()，就会将sp初始化为0，保证sbuf可以反复使用
+     */
     protected int sp;
 
     /**
+     * HCZ：X
+     *
      * Create a scanner from the input array.  This method might
      * modify the array.  To avoid copying the input array, ensure
      * that {@code inputLength < input.length} or
@@ -85,6 +116,9 @@ public class UnicodeReader {
         this(sf, JavacFileManager.toArray(buffer), buffer.limit());
     }
 
+    /**
+     * HCZ：构造函数，更新buf/buflen/bp属性(详见这些属性注释的说明)，将ch扫描到第一个字符
+     */
     protected UnicodeReader(ScannerFactory sf, char[] input, int inputLength) {
         log = sf.log;
         names = sf.names;
@@ -102,7 +136,10 @@ public class UnicodeReader {
         scanChar();
     }
 
-    /** Read next character.
+    /**
+     * HCZ：[关键点]工具方法，将bp往前移动，并从buf中取出来bp对应的字符ch，reader对象会记录下一个待处理的ch。
+     *
+     *  Read next character.
      */
     protected void scanChar() {
         if (bp < buflen) {
@@ -113,7 +150,10 @@ public class UnicodeReader {
         }
     }
 
-    /** Read next character in comment, skipping over double '\' characters.
+    /**
+     * HCZ：X
+     *
+     *  Read next character in comment, skipping over double '\' characters.
      */
     protected void scanCommentChar() {
         scanChar();
@@ -126,32 +166,52 @@ public class UnicodeReader {
         }
     }
 
-    /** Append a character to sbuf.
+    /**
+     * HCZ：扩容sbuf、将ch追加进sbuf、触发scanChar方法
+     *  Append a character to sbuf.
      */
     protected void putChar(char ch, boolean scan) {
+        //HCZ：扩容sbuf
         sbuf = ArrayUtils.ensureCapacity(sbuf, sp);
+        //HCZ：将ch追加进sbuf
         sbuf[sp++] = ch;
+        //HCZ：触发scanChar方法
         if (scan)
             scanChar();
     }
 
+    /**
+     * HCZ：扩容sbuf、将ch追加进sbuf、触发scanChar方法
+     */
     protected void putChar(char ch) {
         putChar(ch, false);
     }
 
+    /**
+     * HCZ：扩容sbuf、将ch追加进sbuf、触发scanChar方法(指向下一个ch)
+     */
     protected void putChar(boolean scan) {
         putChar(ch, scan);
     }
 
+    /**
+     * HCZ：根据sbuf中维护的name关键词，在Names对象中维护的SharedNameTable对象(hash表)中，查找对应的Name对象
+     */
     Name name() {
         return names.fromChars(sbuf, 0, sp);
     }
 
+    /**
+     * HCZ：?
+     */
     String chars() {
         return new String(sbuf, 0, sp);
     }
 
-    /** Convert unicode escape; bp points to initial '\' character
+    /**
+     * HCZ：？
+     *
+     *  Convert unicode escape; bp points to initial '\' character
      *  (Spec 3.3).
      */
     protected void convertUnicode() {
@@ -184,9 +244,14 @@ public class UnicodeReader {
         }
     }
 
-    /** Are surrogates supported?
+    /**
+     * HCZ：？
+     *  Are surrogates supported?
      */
     final static boolean surrogatesSupported = surrogatesSupported();
+    /**
+     * HCZ：？
+     */
     private static boolean surrogatesSupported() {
         try {
             Character.isHighSurrogate('a');
@@ -196,7 +261,10 @@ public class UnicodeReader {
         }
     }
 
-    /** Scan surrogate pairs.  If 'ch' is a high surrogate and
+    /**
+     * HCZ：？获得高代理项
+     *
+     *  Scan surrogate pairs.  If 'ch' is a high surrogate and
      *  the next character is a low surrogate, then put the low
      *  surrogate in 'ch', and return the high surrogate.
      *  otherwise, just return 0.
@@ -217,7 +285,10 @@ public class UnicodeReader {
         return 0;
     }
 
-    /** Convert an ASCII digit from its base (8, 10, or 16)
+    /**
+     * HCZ：将8进制表示的字符串转为10进制数、base表示2/8/10/16进制
+     *
+     *  Convert an ASCII digit from its base (8, 10, or 16)
      *  to its value.
      */
     protected int digit(int pos, int base) {
@@ -230,19 +301,30 @@ public class UnicodeReader {
         return result;
     }
 
+    /**
+     * HCZ：？
+     */
     protected boolean isUnicode() {
         return unicodeConversionBp == bp;
     }
 
+    /**
+     * HCZ：？
+     */
     protected void skipChar() {
         bp++;
     }
 
+    /**
+     * HCZ：？
+     */
     protected char peekChar() {
         return buf[bp + 1];
     }
 
     /**
+     * HCZ：？
+     *
      * Returns a copy of the input buffer, up to its inputLength.
      * Unicode escape sequences are not translated.
      */
@@ -253,6 +335,8 @@ public class UnicodeReader {
     }
 
     /**
+     * HCZ：？
+     *
      * Returns a copy of a character array subset of the input buffer.
      * The returned array begins at the {@code beginIndex} and
      * extends to the character at index {@code endIndex - 1}.

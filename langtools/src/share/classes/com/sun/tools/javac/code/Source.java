@@ -25,16 +25,27 @@
 
 package com.sun.tools.javac.code;
 
-import java.util.*;
+import com.sun.tools.javac.jvm.Target;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.Options;
 
 import javax.lang.model.SourceVersion;
-import static javax.lang.model.SourceVersion.*;
+import java.util.HashMap;
+import java.util.Map;
 
-import com.sun.tools.javac.jvm.Target;
-import com.sun.tools.javac.util.*;
-import static com.sun.tools.javac.main.Option.*;
+import static com.sun.tools.javac.main.Option.SOURCE;
+import static javax.lang.model.SourceVersion.RELEASE_2;
+import static javax.lang.model.SourceVersion.RELEASE_3;
+import static javax.lang.model.SourceVersion.RELEASE_4;
+import static javax.lang.model.SourceVersion.RELEASE_5;
+import static javax.lang.model.SourceVersion.RELEASE_6;
+import static javax.lang.model.SourceVersion.RELEASE_7;
+import static javax.lang.model.SourceVersion.RELEASE_8;
 
-/** The source language version accepted.
+/**
+ * HCZ:Source对象
+ *
+ *  The source language version accepted.
  *
  *  <p><b>This is NOT part of any supported API.
  *  If you write code that depends on this, you do so at your own risk.
@@ -70,9 +81,14 @@ public enum Source {
     /** 1.8 covers the to be determined language features that will be added in JDK 8. */
     JDK1_8("1.8");
 
+    /**
+     * HCZ:X
+     */
     private static final Context.Key<Source> sourceKey
         = new Context.Key<Source>();
-
+    /**
+     * HCZ:X
+     */
     public static Source instance(Context context) {
         Source instance = context.get(sourceKey);
         if (instance == null) {
@@ -85,8 +101,14 @@ public enum Source {
         return instance;
     }
 
+    /**
+     * HCZ:JDK名称
+     */
     public final String name;
 
+    /**
+     * HCZ:key：JDK的名称，value：Source对象。统一了Java5/6/7/8和JDK1.5/1.6/1.7/1.8的名称
+     */
     private static final Map<String,Source> tab = new HashMap<String,Source>();
     static {
         for (Source s : values()) {
@@ -98,16 +120,28 @@ public enum Source {
         tab.put("8", JDK1_8); // Make 8 an alias for 1.8
     }
 
+    /**
+     * HCZ:X
+     */
     private Source(String name) {
         this.name = name;
     }
 
+    /**
+     * HCZ:X
+     */
     public static final Source DEFAULT = JDK1_8;
 
+    /**
+     * HCZ:根据JDK名称，查询Source对象
+     */
     public static Source lookup(String name) {
         return tab.get(name);
     }
 
+    /**
+     * HCZ:根据当前Source对象，返回最低的目标版本Target对象
+     */
     public Target requiredTarget() {
         if (this.compareTo(JDK1_8) >= 0) return Target.JDK1_8;
         if (this.compareTo(JDK1_7) >= 0) return Target.JDK1_7;
@@ -116,6 +150,8 @@ public enum Source {
         if (this.compareTo(JDK1_4) >= 0) return Target.JDK1_4;
         return Target.JDK1_1;
     }
+
+    //#region HCZ:allowXxx方法，就是将当前Source对象与指定的版本相比，不满足条件则返回false
 
     /** Allow encoding errors, giving only warnings. */
     public boolean allowEncodingErrors() {
@@ -227,6 +263,12 @@ public enum Source {
     public boolean allowStructuralMostSpecific() {
         return compareTo(JDK1_8) >= 0;
     }
+
+    //#endregion
+
+    /**
+     * HCZ:将Source对象转换为SourceVersion对象
+     */
     public static SourceVersion toSourceVersion(Source source) {
         switch(source) {
         case JDK1_2:

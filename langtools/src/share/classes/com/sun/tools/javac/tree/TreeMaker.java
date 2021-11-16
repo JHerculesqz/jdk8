@@ -37,7 +37,9 @@ import static com.sun.tools.javac.code.Flags.*;
 import static com.sun.tools.javac.code.Kinds.*;
 import static com.sun.tools.javac.code.TypeTag.*;
 
-/** Factory class for trees.
+/**
+ * HCZ：trees的工厂类
+ *  Factory class for trees.
  *
  *  <p><b>This is NOT part of any supported API.
  *  If you write code that depends on this, you do so at your own risk.

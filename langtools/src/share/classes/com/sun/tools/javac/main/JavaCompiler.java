@@ -25,7 +25,79 @@
 
 package com.sun.tools.javac.main;
 
-import java.io.*;
+import com.sun.source.util.TaskEvent;
+import com.sun.tools.javac.api.MultiTaskListener;
+import com.sun.tools.javac.code.Flags;
+import com.sun.tools.javac.code.Kinds;
+import com.sun.tools.javac.code.Lint.LintCategory;
+import com.sun.tools.javac.code.Source;
+import com.sun.tools.javac.code.Symbol;
+import com.sun.tools.javac.code.Symbol.ClassSymbol;
+import com.sun.tools.javac.code.Symbol.CompletionFailure;
+import com.sun.tools.javac.code.Symbol.PackageSymbol;
+import com.sun.tools.javac.code.Symtab;
+import com.sun.tools.javac.code.Type;
+import com.sun.tools.javac.code.Types;
+import com.sun.tools.javac.comp.Annotate;
+import com.sun.tools.javac.comp.Attr;
+import com.sun.tools.javac.comp.AttrContext;
+import com.sun.tools.javac.comp.Check;
+import com.sun.tools.javac.comp.CompileStates;
+import com.sun.tools.javac.comp.CompileStates.CompileState;
+import com.sun.tools.javac.comp.Enter;
+import com.sun.tools.javac.comp.Env;
+import com.sun.tools.javac.comp.Flow;
+import com.sun.tools.javac.comp.LambdaToMethod;
+import com.sun.tools.javac.comp.Lower;
+import com.sun.tools.javac.comp.Todo;
+import com.sun.tools.javac.comp.TransTypes;
+import com.sun.tools.javac.file.JavacFileManager;
+import com.sun.tools.javac.jvm.ClassReader;
+import com.sun.tools.javac.jvm.ClassWriter;
+import com.sun.tools.javac.jvm.Gen;
+import com.sun.tools.javac.jvm.JNIWriter;
+import com.sun.tools.javac.jvm.Target;
+import com.sun.tools.javac.parser.Parser;
+import com.sun.tools.javac.parser.ParserFactory;
+import com.sun.tools.javac.processing.JavacProcessingEnvironment;
+import com.sun.tools.javac.tree.JCTree;
+import com.sun.tools.javac.tree.JCTree.JCClassDecl;
+import com.sun.tools.javac.tree.JCTree.JCCompilationUnit;
+import com.sun.tools.javac.tree.JCTree.JCExpression;
+import com.sun.tools.javac.tree.JCTree.JCLambda;
+import com.sun.tools.javac.tree.JCTree.JCMemberReference;
+import com.sun.tools.javac.tree.JCTree.JCMethodDecl;
+import com.sun.tools.javac.tree.JCTree.JCVariableDecl;
+import com.sun.tools.javac.tree.Pretty;
+import com.sun.tools.javac.tree.TreeMaker;
+import com.sun.tools.javac.tree.TreeScanner;
+import com.sun.tools.javac.tree.TreeTranslator;
+import com.sun.tools.javac.util.Abort;
+import com.sun.tools.javac.util.Assert;
+import com.sun.tools.javac.util.BaseFileManager;
+import com.sun.tools.javac.util.Context;
+import com.sun.tools.javac.util.FatalError;
+import com.sun.tools.javac.util.JCDiagnostic;
+import com.sun.tools.javac.util.List;
+import com.sun.tools.javac.util.ListBuffer;
+import com.sun.tools.javac.util.Log;
+import com.sun.tools.javac.util.Log.WriterKind;
+import com.sun.tools.javac.util.Name;
+import com.sun.tools.javac.util.Names;
+import com.sun.tools.javac.util.Options;
+import com.sun.tools.javac.util.Pair;
+import com.sun.tools.javac.util.Position;
+import com.sun.tools.javac.util.RichDiagnosticFormatter;
+
+import javax.annotation.processing.Processor;
+import javax.lang.model.SourceVersion;
+import javax.tools.DiagnosticListener;
+import javax.tools.JavaFileManager;
+import javax.tools.JavaFileObject;
+import javax.tools.StandardLocation;
+import java.io.BufferedWriter;
+import java.io.Closeable;
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -35,41 +107,26 @@ import java.util.MissingResourceException;
 import java.util.Queue;
 import java.util.ResourceBundle;
 import java.util.Set;
-import java.util.logging.Handler;
-import java.util.logging.Level;
-import java.util.logging.Logger;
-
-import javax.annotation.processing.Processor;
-import javax.lang.model.SourceVersion;
-import javax.tools.DiagnosticListener;
-import javax.tools.JavaFileManager;
-import javax.tools.JavaFileObject;
-import javax.tools.StandardLocation;
-
-import static javax.tools.StandardLocation.CLASS_OUTPUT;
-
-import com.sun.source.util.TaskEvent;
-import com.sun.tools.javac.api.MultiTaskListener;
-import com.sun.tools.javac.code.*;
-import com.sun.tools.javac.code.Lint.LintCategory;
-import com.sun.tools.javac.code.Symbol.*;
-import com.sun.tools.javac.comp.*;
-import com.sun.tools.javac.comp.CompileStates.CompileState;
-import com.sun.tools.javac.file.JavacFileManager;
-import com.sun.tools.javac.jvm.*;
-import com.sun.tools.javac.parser.*;
-import com.sun.tools.javac.processing.*;
-import com.sun.tools.javac.tree.*;
-import com.sun.tools.javac.tree.JCTree.*;
-import com.sun.tools.javac.util.*;
-import com.sun.tools.javac.util.Log.WriterKind;
 
 import static com.sun.tools.javac.code.TypeTag.CLASS;
-import static com.sun.tools.javac.main.Option.*;
-import static com.sun.tools.javac.util.JCDiagnostic.DiagnosticFlag.*;
+import static com.sun.tools.javac.main.Option.ENCODING;
+import static com.sun.tools.javac.main.Option.G_CUSTOM;
+import static com.sun.tools.javac.main.Option.PRINTSOURCE;
+import static com.sun.tools.javac.main.Option.PROC;
+import static com.sun.tools.javac.main.Option.PROCESSOR;
+import static com.sun.tools.javac.main.Option.PROCESSORPATH;
+import static com.sun.tools.javac.main.Option.VERBOSE;
+import static com.sun.tools.javac.main.Option.WERROR;
+import static com.sun.tools.javac.main.Option.XJCOV;
+import static com.sun.tools.javac.main.Option.XLINT_CUSTOM;
+import static com.sun.tools.javac.main.Option.XPRINT;
+import static com.sun.tools.javac.util.JCDiagnostic.DiagnosticFlag.RECOVERABLE;
+import static javax.tools.StandardLocation.CLASS_OUTPUT;
 
-
-/** This class could be the main entry point for GJC when GJC is used as a
+/**
+ * HCZ：Javac编译器
+ *
+ *  This class could be the main entry point for GJC when GJC is used as a
  *  component in a larger software system. It provides operations to
  *  construct a new compiler, and to run a new compiler on a set of source
  *  files.
@@ -80,11 +137,19 @@ import static com.sun.tools.javac.util.JCDiagnostic.DiagnosticFlag.*;
  *  deletion without notice.</b>
  */
 public class JavaCompiler {
-    /** The context key for the compiler. */
+    /**
+     * HCZ:存储JavaCompiler对象的上下文对象
+     *
+     *  The context key for the compiler.
+     */
     protected static final Context.Key<JavaCompiler> compilerKey =
         new Context.Key<JavaCompiler>();
 
-    /** Get the JavaCompiler instance for this context. */
+    /**
+     * HCZ:从上下文对象中获取JavaCompiler对象，如果没有，则创建。
+     *
+     *  Get the JavaCompiler instance for this context.
+     */
     public static JavaCompiler instance(Context context) {
         JavaCompiler instance = context.get(compilerKey);
         if (instance == null)
@@ -92,21 +157,36 @@ public class JavaCompiler {
         return instance;
     }
 
-    /** The current version number as a string.
+    /**
+     * HCZ:X
+     * The current version number as a string.
      */
     public static String version() {
         return version("release");  // mm.nn.oo[-milestone]
     }
 
-    /** The current full version number as a string.
+    /**
+     * HCZ:X
+     *  The current full version number as a string.
      */
     public static String fullVersion() {
         return version("full"); // mm.mm.oo[-milestone]-build
     }
 
+    /**
+     * HCZ:X
+     *  The current full version number as a string.
+     */
     private static final String versionRBName = "com.sun.tools.javac.resources.version";
+    /**
+     * HCZ:X
+     *  The current full version number as a string.
+     */
     private static ResourceBundle versionRB;
-
+    /**
+     * HCZ:X
+     *  The current full version number as a string.
+     */
     private static String version(String key) {
         if (versionRB == null) {
             try {
@@ -124,6 +204,8 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
+     *
      * Control how the compiler's latter phases (attr, flow, desugar, generate)
      * are connected. Each individual file is processed by each phase in turn,
      * but with different compile policies, you can control the order in which
@@ -137,17 +219,23 @@ public class JavaCompiler {
      */
     protected static enum CompilePolicy {
         /**
+         * HCZ:?
+         *
          * Just attribute the parse trees.
          */
         ATTR_ONLY,
 
         /**
+         * HCZ:?
+         *
          * Just attribute and do flow analysis on the parse trees.
          * This should catch most user errors.
          */
         CHECK_ONLY,
 
         /**
+         * HCZ:?
+         *
          * Attribute everything, then do flow analysis for everything,
          * then desugar everything, and only then generate output.
          * This means no output will be generated if there are any
@@ -156,6 +244,8 @@ public class JavaCompiler {
         SIMPLE,
 
         /**
+         * HCZ:?
+         *
          * Groups the classes for each source file together, then process
          * each group in a manner equivalent to the {@code SIMPLE} policy.
          * This means no output will be generated if there are any
@@ -164,6 +254,8 @@ public class JavaCompiler {
         BY_FILE,
 
         /**
+         * HCZ:?
+         *
          * Completely process each entry on the todo list in turn.
          * -- this is the same for 1.5.
          * Means output might be generated for some classes in a compilation unit
@@ -171,6 +263,9 @@ public class JavaCompiler {
          */
         BY_TODO;
 
+        /**
+         * HCZ:?
+         */
         static CompilePolicy decode(String option) {
             if (option == null)
                 return DEFAULT_COMPILE_POLICY;
@@ -188,17 +283,35 @@ public class JavaCompiler {
                 return DEFAULT_COMPILE_POLICY;
         }
     }
-
+    /**
+     * HCZ:?
+     */
     private static final CompilePolicy DEFAULT_COMPILE_POLICY = CompilePolicy.BY_TODO;
 
+    /**
+     * HCZ:?
+     */
     protected static enum ImplicitSourcePolicy {
-        /** Don't generate or process implicitly read source files. */
+        /**
+         * HCZ:?
+         *
+         * Don't generate or process implicitly read source files.
+         */
         NONE,
-        /** Generate classes for implicitly read source files. */
+        /**
+         * HCZ:?
+         *  Generate classes for implicitly read source files.
+         */
         CLASS,
-        /** Like CLASS, but generate warnings if annotation processing occurs */
+        /**
+         * HCZ:?
+         *  Like CLASS, but generate warnings if annotation processing occurs *
+         */
         UNSET;
 
+        /**
+         * HCZ:?
+         */
         static ImplicitSourcePolicy decode(String option) {
             if (option == null)
                 return UNSET;
@@ -211,101 +324,164 @@ public class JavaCompiler {
         }
     }
 
-    /** The log to be used for error reporting.
+    /**
+     * HCZ：日志对象
+     *  The log to be used for error reporting.
      */
     public Log log;
 
-    /** Factory for creating diagnostic objects
+    /**
+     * HCZ:?
+     *  Factory for creating diagnostic objects
      */
     JCDiagnostic.Factory diagFactory;
 
-    /** The tree factory module.
+    /**
+     * HCZ：Tree工厂
+     *
+     *  The tree factory module.
      */
     protected TreeMaker make;
 
-    /** The class reader.
+    /**
+     * HCZ:?
+     * The class reader.
      */
     protected ClassReader reader;
 
-    /** The class writer.
+    /**
+     * HCZ:?
+     *  The class writer.
      */
     protected ClassWriter writer;
 
-    /** The native header writer.
+    /**
+     * HCZ:?
+     *  The native header writer.
      */
     protected JNIWriter jniWriter;
 
-    /** The module for the symbol table entry phases.
+    /**
+     * HCZ:?
+     *  The module for the symbol table entry phases.
      */
     protected Enter enter;
 
-    /** The symbol table.
+    /**
+     * HCZ:?
+     *  The symbol table.
      */
     protected Symtab syms;
 
-    /** The language version.
+    /**
+     * HCZ:Source对象
+     *
+     *  The language version.
      */
     protected Source source;
 
-    /** The module for code generation.
+    /**
+     * HCZ:?
+     *
+     *  The module for code generation.
      */
     protected Gen gen;
 
-    /** The name table.
+    /**
+     * HCZ：Names对象
+     *
+     *  The name table.
      */
     protected Names names;
 
-    /** The attributor.
+    /**
+     * HCZ：？
+     *
+     *  The attributor.
      */
     protected Attr attr;
 
-    /** The attributor.
+    /**
+     * HCZ：？
+     *
+     *  The attributor.
      */
     protected Check chk;
 
-    /** The flow analyzer.
+    /**
+     * HCZ：？
+     *
+     *  The flow analyzer.
      */
     protected Flow flow;
 
-    /** The type eraser.
+    /**
+     * HCZ：？
+     *
+     *  The type eraser.
      */
     protected TransTypes transTypes;
 
-    /** The syntactic sugar desweetener.
+    /**
+     * HCZ：？
+     *
+     *  The syntactic sugar desweetener.
      */
     protected Lower lower;
 
-    /** The annotation annotator.
+    /**
+     * HCZ：？
+     *
+     *  The annotation annotator.
      */
     protected Annotate annotate;
 
-    /** Force a completion failure on this name
+    /**
+     * HCZ：？
+     *
+     *  Force a completion failure on this name
      */
     protected final Name completionFailureName;
 
-    /** Type utilities.
+    /**
+     * HCZ：？
+     *
+     *  Type utilities.
      */
     protected Types types;
 
-    /** Access to file objects.
+    /**
+     * HCZ：文件管理对象
+     *
+     *  Access to file objects.
      */
     protected JavaFileManager fileManager;
 
-    /** Factory for parsers.
+    /**
+     * HCZ：解析器工厂对象
+     *
+     *  Factory for parsers.
      */
     protected ParserFactory parserFactory;
 
-    /** Broadcasting listener for progress events
+    /**
+     * HCZ：监听对象管理器
+     *
+     *  Broadcasting listener for progress events
      */
     protected MultiTaskListener taskListener;
 
     /**
+     * HCZ：为注解处理而创建的新的JavaCompiler对象
+     *
      * Annotation processing may require and provide a new instance
      * of the compiler to be used for the analyze and generate phases.
      */
     protected JavaCompiler delegateCompiler;
 
     /**
+     * HCZ：？
+     *
      * SourceCompleter that delegates to the complete-method of this class.
      */
     protected final ClassReader.SourceCompleter thisCompleter =
@@ -317,27 +493,43 @@ public class JavaCompiler {
             };
 
     /**
+     * HCZ:命令行参数对象
+     *
      * Command line options.
      */
     protected Options options;
 
+    /**
+     * HCZ:上下文对象
+     */
     protected Context context;
 
     /**
+     * HCZ：？
+     *
      * Flag set if any annotation processing occurred.
      **/
     protected boolean annotationProcessingOccurred;
 
     /**
+     * HCZ：？
+     *
      * Flag set if any implicit source files read.
      **/
     protected boolean implicitSourceFilesRead;
 
+    /**
+     * HCZ：？
+     */
     protected CompileStates compileStates;
 
-    /** Construct a new compiler using a shared context.
+    /**
+     * HCZ:构造函数，赋初值、做一些基本校验
+     *
+     *  Construct a new compiler using a shared context.
      */
     public JavaCompiler(Context context) {
+        //HCZ:初始化各个属性
         this.context = context;
         context.put(compilerKey, this);
 
@@ -399,6 +591,7 @@ public class JavaCompiler {
         processPcks   = options.isSet("process.packages");
         werror        = options.isSet(WERROR);
 
+        //HCZ:如果当前Source对象比默认Source对象版本小+没有设置-Xlint+又不是BootStrapClassLoader，则打印告警日志
         if (source.compareTo(Source.DEFAULT) < 0) {
             if (options.isUnset(XLINT_CUSTOM, "-" + LintCategory.OPTIONS.option)) {
                 if (fileManager instanceof BaseFileManager) {
@@ -407,23 +600,26 @@ public class JavaCompiler {
                 }
             }
         }
-
+        //HCZ：检查是否存在废弃的Option
         checkForObsoleteOptions(target);
-
+        //HCZ:？
         verboseCompilePolicy = options.isSet("verboseCompilePolicy");
 
+        //HCZ:?
         if (attrParseOnly)
             compilePolicy = CompilePolicy.ATTR_ONLY;
         else
             compilePolicy = CompilePolicy.decode(options.get("compilePolicy"));
-
+        //HCZ:？
         implicitSourcePolicy = ImplicitSourcePolicy.decode(options.get("-implicit"));
 
+        //HCZ:？
         completionFailureName =
             options.isSet("failcomplete")
             ? names.fromString(options.get("failcomplete"))
             : null;
 
+        //HCZ:？
         shouldStopPolicyIfError =
             options.isSet("shouldStopPolicy") // backwards compatible
             ? CompileState.valueOf(options.get("shouldStopPolicy"))
@@ -435,10 +631,14 @@ public class JavaCompiler {
             ? CompileState.valueOf(options.get("shouldStopPolicyIfNoError"))
             : CompileState.GENERATE;
 
+        //HCZ:？
         if (options.isUnset("oldDiags"))
             log.setDiagnosticFormatter(RichDiagnosticFormatter.instance(context));
     }
 
+    /**
+     * HCZ：？检查是否存在废弃的Option
+     */
     private void checkForObsoleteOptions(Target target) {
         // Unless lint checking on options is disabled, check for
         // obsolete source and target options.
@@ -468,71 +668,105 @@ public class JavaCompiler {
      */
     public boolean verbose;
 
-    /** Emit plain Java source files rather than class files.
+    /**
+     * HCZ:?
+     *  Emit plain Java source files rather than class files.
      */
     public boolean sourceOutput;
 
-    /** Emit stub source files rather than class files.
+    /**
+     * HCZ:?
+     * Emit stub source files rather than class files.
      */
     public boolean stubOutput;
 
-    /** Generate attributed parse tree only.
+    /**
+     * HCZ:?
+     *  Generate attributed parse tree only.
      */
     public boolean attrParseOnly;
 
-    /** Switch: relax some constraints for producing the jsr14 prototype.
+    /**
+     * HCZ:?
+     *  Switch: relax some constraints for producing the jsr14 prototype.
      */
     boolean relax;
 
-    /** Debug switch: Emit Java sources after inner class flattening.
+    /**
+     * HCZ:?
+     *  Debug switch: Emit Java sources after inner class flattening.
      */
     public boolean printFlat;
 
-    /** The encoding to be used for source input.
+    /**
+     * HCZ:Java源文件的编码名称
+     *
+     * The encoding to be used for source input.
      */
     public String encoding;
 
-    /** Generate code with the LineNumberTable attribute for debugging
+    /**
+     * HCZ:?
+     * Generate code with the LineNumberTable attribute for debugging
      */
     public boolean lineDebugInfo;
 
-    /** Switch: should we store the ending positions?
+    /**
+     * HCZ：？是否保存结束位置-谁的结束位置？
+     *
+     *  Switch: should we store the ending positions?
      */
     public boolean genEndPos;
 
-    /** Switch: should we debug ignored exceptions
+    /**
+     * HCZ:?
+     *  Switch: should we debug ignored exceptions
      */
     protected boolean devVerbose;
 
-    /** Switch: should we (annotation) process packages as well
+    /**
+     * HCZ:?
+     *  Switch: should we (annotation) process packages as well
      */
     protected boolean processPcks;
 
-    /** Switch: treat warnings as errors
+    /**
+     * HCZ:?
+     *  Switch: treat warnings as errors
      */
     protected boolean werror;
 
-    /** Switch: is annotation processing requested explicitly via
+    /**
+     * HCZ:?
+     *  Switch: is annotation processing requested explicitly via
      * CompilationTask.setProcessors?
      */
     protected boolean explicitAnnotationProcessingRequested = false;
 
     /**
+     * HCX:?
+     *
      * The policy for the order in which to perform the compilation
      */
     protected CompilePolicy compilePolicy;
 
     /**
+     * HCZ:?
+     *
      * The policy for what to do with implicitly read source files
      */
     protected ImplicitSourcePolicy implicitSourcePolicy;
 
     /**
+     * HCZ:?
+     *
      * Report activity related to compilePolicy
      */
     public boolean verboseCompilePolicy;
 
     /**
+     * HCZ:?
+     *
      * Policy of how far to continue compilation after errors have occurred.
      * Set this to minimum CompileState (INIT) to stop as soon as possible
      * after errors.
@@ -540,26 +774,38 @@ public class JavaCompiler {
     public CompileState shouldStopPolicyIfError;
 
     /**
+     * HCZ:?
+     *
      * Policy of how far to continue compilation when no errors have occurred.
      * Set this to maximum CompileState (GENERATE) to perform full compilation.
      * Set this lower to perform partial compilation, such as -proc:only.
      */
     public CompileState shouldStopPolicyIfNoError;
 
-    /** A queue of all as yet unattributed classes.
+    /**
+     * HCZ:?
+     *  A queue of all as yet unattributed classes.
      */
     public Todo todo;
 
-    /** A list of items to be closed when the compilation is complete.
+    /**
+     * HCZ:?
+     *  A list of items to be closed when the compilation is complete.
      */
     public List<Closeable> closeables = List.nil();
 
-    /** The set of currently compiled inputfiles, needed to ensure
+    /**
+     * HCZ:缓存待编译的Java源文件对象
+     *
+     *  The set of currently compiled inputfiles, needed to ensure
      *  we don't accidentally overwrite an input file when -s is set.
      *  initialized by `compile'.
      */
     protected Set<JavaFileObject> inputFiles = new HashSet<JavaFileObject>();
 
+    /**
+     * HCZ:?
+     */
     protected boolean shouldStop(CompileState cs) {
         CompileState shouldStopPolicy = (errorCount() > 0 || unrecoverableError())
             ? shouldStopPolicyIfError
@@ -567,7 +813,9 @@ public class JavaCompiler {
         return cs.isAfter(shouldStopPolicy);
     }
 
-    /** The number of errors reported so far.
+    /**
+     * HCZ:X
+     * The number of errors reported so far.
      */
     public int errorCount() {
         if (delegateCompiler != null && delegateCompiler != this)
@@ -580,15 +828,22 @@ public class JavaCompiler {
         return log.nerrors;
     }
 
+    /**
+     * HCZ:?
+     */
     protected final <T> Queue<T> stopIfError(CompileState cs, Queue<T> queue) {
         return shouldStop(cs) ? new ListBuffer<T>() : queue;
     }
-
+    /**
+     * HCZ:?
+     */
     protected final <T> List<T> stopIfError(CompileState cs, List<T> list) {
         return shouldStop(cs) ? List.<T>nil() : list;
     }
 
-    /** The number of warnings reported so far.
+    /**
+     * HCZ:X
+     * The number of warnings reported so far.
      */
     public int warningCount() {
         if (delegateCompiler != null && delegateCompiler != this)
@@ -598,13 +853,7 @@ public class JavaCompiler {
     }
 
     /**
-     *  HCZ：[调用链]
-     *  JavaCompiler#readSource(JavaFileObject)
-     *      RegularFileObject#getCharContent(boolean ignoreEncodingErrors)
-     *          JavacFileManager#getCachedContent(JavaFileObject)
-     *              BaseFileManager#"region Content cache"
-     *              BaseFileManager#"region ByteBuffers"
-     *              BaseFileManager#"region Encoding"
+     *  HCZ：详见JavaCompiler#compile(List<JavaFileObject>, List<String> classnames, Iterable<? extends Processor>)
      *
      *  Try to open input stream with given name.
      *  Report an error if this fails.
@@ -622,14 +871,17 @@ public class JavaCompiler {
         }
     }
 
-    /** Parse contents of input stream.
+    /**
+     * HCZ：详见JavaCompiler#compile(List<JavaFileObject>, List<String> classnames, Iterable<? extends Processor>)
+     *
+     *  Parse contents of input stream.
      *  @param filename     The name of the file from which input stream comes.
      *  @param content      The characters to be parsed.
      */
     protected JCCompilationUnit parse(JavaFileObject filename, CharSequence content) {
         //HCZ：获得当前时间
         long msec = now();
-        //HCZ：创建抽象语法树对象
+        //HCZ：初始化抽象语法树对象
         JCCompilationUnit tree = make.TopLevel(List.<JCTree.JCAnnotation>nil(),
                                       null, List.<JCTree>nil());
         //HCZ：如果从Java源文件转换得到的字符输入流不为空(content对象)，则
@@ -667,13 +919,20 @@ public class JavaCompiler {
         return tree;
     }
     // where
+        /**
+         * HCZ：是否保留注释
+         */
         public boolean keepComments = false;
+        /**
+         * HCZ：是否保留注释
+         */
         protected boolean keepComments() {
             return keepComments || sourceOutput || stubOutput;
         }
 
-
-    /** Parse contents of file.
+    /**
+     * HCZ:X
+     *  Parse contents of file.
      *  @param filename     The name of the file to be parsed.
      */
     @Deprecated
@@ -683,14 +942,7 @@ public class JavaCompiler {
     }
 
     /**
-     * HCZ：[调用链]
-     * Main#compile(String[] args)
-     * Main#compile(String[] args, String[] classNames, Context, List<JavaFileObject>, Iterable<? extends Processor>)
-     * JavaCompiler#compile(List<JavaFileObject>, List<String> classnames, Iterable<? extends Processor>)
-     * JavaCompiler#parseFiles(Iterable<JavaFileObject>)
-     * JavaCompiler#parse(JavaFileObject)
-     * JavaCompiler#readSource(JavaFileObject)
-     * JavaCompiler#parse(JavaFileObject, CharSequence)
+     * HCZ：根据Java源文件对象，词法分析得到Token流，进而得到一个抽象语法树
      *
      * Parse contents of file.
      *  @param filename     The name of the file to be parsed.
@@ -708,7 +960,10 @@ public class JavaCompiler {
         }
     }
 
-    /** Resolve an identifier which may be the binary name of a class or
+    /**
+     * HCZ:X
+     *
+     *  Resolve an identifier which may be the binary name of a class or
      * the Java name of a class or package.
      * @param name      The name to resolve
      */
@@ -721,7 +976,9 @@ public class JavaCompiler {
         }
     }
 
-    /** Resolve an identifier.
+    /**
+     * HCZ:?
+     *  Resolve an identifier.
      * @param name      The identifier to resolve
      */
     public Symbol resolveIdent(String name) {
@@ -745,7 +1002,10 @@ public class JavaCompiler {
         }
     }
 
-    /** Emit plain Java source for a class.
+    /**
+     * HCZ:?
+     *
+     *  Emit plain Java source for a class.
      *  @param env    The attribution environment of the outermost class
      *                containing this class.
      *  @param cdef   The class definition to be printed.
@@ -772,7 +1032,10 @@ public class JavaCompiler {
         }
     }
 
-    /** Generate code and emit a class file for a given class
+    /**
+     * HCZ:X
+     *
+     *  Generate code and emit a class file for a given class
      *  @param env    The attribution environment of the outermost class
      *                containing this class.
      *  @param cdef   The class definition from which code is generated.
@@ -792,7 +1055,10 @@ public class JavaCompiler {
         return null;
     }
 
-    /** Complete compiling a source file that has been accessed
+    /**
+     * HCZ:?
+     *
+     *  Complete compiling a source file that has been accessed
      *  by the class file reader.
      *  @param c          The class the source file of which needs to be compiled.
      */
@@ -848,17 +1114,91 @@ public class JavaCompiler {
         implicitSourceFilesRead = true;
     }
 
-    /** Track when the JavaCompiler has been used to compile something. */
+    /**
+     * HCZ:?
+     *  Track when the JavaCompiler has been used to compile something.
+     */
     private boolean hasBeenUsed = false;
+    /**
+     * HCZ：javac编译开始时间
+     */
     private long start_msec = 0;
+    /**
+     * HCZ：javac编译结束时间
+     */
     public long elapsed_msec = 0;
 
+    /**
+     * HCZ:X
+     */
     public void compile(List<JavaFileObject> sourceFileObject)
         throws Throwable {
         compile(sourceFileObject, List.<String>nil(), null);
     }
-
     /**
+     * HCZ:[调用链]词法分析
+     * Main#compile(String[] args)
+     *  Main#compile(String[] args, String[] classNames, Context, List<JavaFileObject>, Iterable<? extends Processor>)
+     *      JavaCompiler#compile(List<JavaFileObject>, List<String> classnames, Iterable<? extends Processor>)
+     *          JavaCompiler#parseFiles(Iterable<JavaFileObject>)：返回抽象语法树对象集合
+     *              JavaCompiler#parse(JavaFileObject)：返回抽象语法树对象
+     *                  ([关键点]Java源代码->[readSource()]->字符流->[parse()]->(Token流->抽象语法树))
+     *                  [关键点]JavaCompiler#readSource(JavaFileObject)
+     *                      RegularFileObject#getCharContent(boolean ignoreEncodingErrors)
+     *                          JavacFileManager#getCachedContent(JavaFileObject)
+     *                              BaseFileManager#"region Content cache"
+     *                              BaseFileManager#"region ByteBuffers"
+     *                              BaseFileManager#"region Encoding"
+     *                  [关键点]JavaCompiler#parse(JavaFileObject filename, CharSequence content)
+     *                      ParserFactory#newParser(CharSequence content, boolean keepDocComments, boolean keepEndPos, boolean keepLineMap):返回Paser对象
+     *                          (ParserFactory对象维护了ScannerFactory对象)
+     *                          ScannerFactory#newScanner(CharSequence content, boolean keepDocComments)：Lexer对象，Lexer接口的具体实现是Scanner对象
+     *                              (创建Scanner对象时，Scanner对象维护了JavaTokenizer对象，JavaTokenizer对象维护了UnicodeReader对象)
+     *                              Scanner#Scanner(ScannerFactory, char[] buf, int inputLength):
+     *                                  JavaTokenizer#JavaTokenizer(ScannerFactory, char[] buf, int inputLength)：
+     *                                      UnicodeReader#UnicodeReader(ScannerFactory, char[] input, int inputLength):
+     *                                          UnicodeReader#scanChar():reader对象会记录下一个待处理的ch。
+     *                          JavacParser#JavacParser(ParserFactory, Lexer, ......)：返回Parser对象，JavacParser对象是实现类
+     *                              JavacParser#nextToken()：触发Scanner对象#nextToken()
+     *                                  Scanner#nextToken()：触发JavaTokenizer对象#readToken()
+     *                                      ([关键点]每一次nextToken，一定要关注如何打破死循环，进而分词)
+     *                                      JavaTokenizer#readToken()：从EOI开始，输出package
+     *                                          [关键点]JavaTokenizer#scanIdent()：扫描标识符。while-true，打破条件是非字母、数字、下划线、美元符号的ASCII。
+     *                                              UnicodeReader#putChar()：扩容sbuf、将ch追加进sbuf、触发scanChar方法(指向下一个ch)
+     *                                              while-true:
+     *                                                  如果ch是字符，则UnicodeReader#putChar()：扩容sbuf、将ch追加进sbuf、触发scanChar方法(指向下一个ch)
+     *                                                  如果ch是空格之类的，则default分支
+     *                                                      判断isJavaIdentifierPart：？待研究
+     *                                                      UnicodeReader#name()：获得当前解析出来的Name对象
+     *                                                      Tokens#lookupKind()：获得当前解析出来的Name对象对应的Token对象
+     *                                                      打破while-true循环
+     *                      JavaParser#parseCompilationUnit():返回JCCompilationUnit对象-抽象语法树
+     *                          (此时上一个Token是Package)
+     *                          JavacParser#nextToken()：触发Scanner对象#nextToken()
+     *                              Scanner#nextToken()：触发JavaTokenizer对象#readToken()
+     *                                  JavaTokenizer#readToken()：从package后的空格开始，输出完整的第一段包名
+     *                                      while-true:
+     *                                          ch是package后的空格，则UnicodeReader#scanChar()，得到第一段包名的第1个字符
+     *                                          ch是字符，则JavaTokenizer#scanIdent()：...第一段包名的第2个字符...第3个字符...得到完整的第一段包名。
+     *                                          ch是.，则default分支
+     *                                              判断isJavaIdentifierPart：？待研究
+     *                                              UnicodeReader#name()：获得当前解析出来的Name对象=>完整的第一段包名
+     *                                              Tokens#lookupKind()：获得当前解析出来的Name对象对应的Token对象=>完整的第一段包名
+     *                                              打破while-true循环
+     *                          JavacParser#qualident(boolean allowAnnos):JCExpression
+     *                              JavacParser#ident()：Name对象
+     *                                  JavacParser#nextToken()：触发Scanner对象#nextToken()
+     *                                      Scanner#nextToken()：触发JavaTokenizer对象#readToken()
+     *                                          JavaTokenizer#readToken()：从第二段包名前的.开始，输出.
+     *                                          (省略)
+     *                              如果是.，则JavacParser#nextToken()：
+     *                                  省略...得到第二段包名
+     *                              最终，JavacParser#qualident输出完整包名。
+     *                          JavacParser#accept(TokenKind)：增加";"Token对象。
+     *
+     *
+     *
+     *
      * Main method: compile a list of files, return all compiled classes
      *
      * @param sourceFileObjects file objects to be compiled
@@ -870,6 +1210,7 @@ public class JavaCompiler {
                         List<String> classnames,
                         Iterable<? extends Processor> processors)
     {
+        //HCZ:?
         if (processors != null && processors.iterator().hasNext())
             explicitAnnotationProcessingRequested = true;
         // as a JavaCompiler can only be used once, throw an exception if
@@ -878,22 +1219,27 @@ public class JavaCompiler {
             throw new AssertionError("attempt to reuse JavaCompiler");
         hasBeenUsed = true;
 
+        //HCZ:?
         // forcibly set the equivalent of -Xlint:-options, so that no further
         // warnings about command line options are generated from this point on
         options.put(XLINT_CUSTOM.text + "-" + LintCategory.OPTIONS.option, "true");
         options.remove(XLINT_CUSTOM.text + LintCategory.OPTIONS.option);
 
+        //HCZ:获得javac开始时间
         start_msec = now();
 
         try {
+            //HCZ:?
             initProcessAnnotations(processors);
 
+            //HCZ:?
             // These method calls must be chained to avoid memory leaks
             delegateCompiler =
                 processAnnotations(
                     enterTrees(stopIfError(CompileState.PARSE, parseFiles(sourceFileObjects))),
                     classnames);
 
+            //HCZ:?
             delegateCompiler.compile2();
             delegateCompiler.close();
             elapsed_msec = delegateCompiler.elapsed_msec;
@@ -907,6 +1253,8 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
+     *
      * The phases following annotation processing: attribution,
      * desugar, and finally code generation.
      */
@@ -960,18 +1308,22 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Set needRootClasses to true, in JavaCompiler subclass constructor
      * that want to collect public apis of classes supplied on the command line.
      */
     protected boolean needRootClasses = false;
 
     /**
+     * HCZ:X
      * The list of classes explicitly supplied on the command line for compilation.
      * Not always populated.
      */
     private List<JCClassDecl> rootClasses;
 
     /**
+     * HCZ:遍历N个Java源文件对象，得到抽象语法树集合
+     *
      * Parses a list of files.
      */
    public List<JCCompilationUnit> parseFiles(Iterable<JavaFileObject> fileObjects) {
@@ -992,6 +1344,7 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Enter the symbols found in a list of parse trees if the compilation
      * is expected to proceed beyond anno processing into attr.
      * As a side-effect, this puts elements on the "todo" list.
@@ -1004,6 +1357,8 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:？
+     *
      * Enter the symbols found in a list of parse trees.
      * As a side-effect, this puts elements on the "todo" list.
      * Also stores a list of all top level classes in rootClasses.
@@ -1054,6 +1409,8 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
+     *
      * Set to true to enable skeleton annotation processing code.
      * Currently, we assume this variable will be replaced more
      * advanced logic to figure out if annotation processing is
@@ -1061,14 +1418,21 @@ public class JavaCompiler {
      */
     boolean processAnnotations = false;
 
+    /**
+     * HCZ:X
+     */
     Log.DeferredDiagnosticHandler deferredDiagnosticHandler;
 
     /**
+     * HCZ:?
+     *
      * Object to handle annotation processing.
      */
     private JavacProcessingEnvironment procEnvImpl = null;
 
     /**
+     * HCZ:?
+     *
      * Check if we should process annotations.
      * If so, and if no scanner is yet registered, then set up the DocCommentScanner
      * to catch doc comments, and set keepComments so the parser records them in
@@ -1101,12 +1465,14 @@ public class JavaCompiler {
         }
     }
 
-    // TODO: called by JavacTaskImpl
+    //HCZ:?    TODO: called by JavacTaskImpl
     public JavaCompiler processAnnotations(List<JCCompilationUnit> roots) {
         return processAnnotations(roots, List.<String>nil());
     }
 
     /**
+     * HCZ:?
+     *
      * Process any annotations found in the specified compilation units.
      * @param roots a list of compilation units
      * @return an instance of the compiler in which to complete the compilation
@@ -1222,6 +1588,9 @@ public class JavaCompiler {
         }
     }
 
+    /**
+     * HCZ:？
+     */
     private boolean unrecoverableError() {
         if (deferredDiagnosticHandler != null) {
             for (JCDiagnostic d: deferredDiagnosticHandler.getDiagnostics()) {
@@ -1231,13 +1600,17 @@ public class JavaCompiler {
         }
         return false;
     }
-
+    /**
+     * HCZ:？
+     */
     boolean explicitAnnotationProcessingRequested() {
         return
             explicitAnnotationProcessingRequested ||
             explicitAnnotationProcessingRequested(options);
     }
-
+    /**
+     * HCZ:？
+     */
     static boolean explicitAnnotationProcessingRequested(Options options) {
         return
             options.isSet(PROCESSOR) ||
@@ -1247,6 +1620,7 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Attribute a list of parse trees, such as found on the "todo" list.
      * Note that attributing classes may cause additional files to be
      * parsed and entered via the SourceCompleter.
@@ -1261,6 +1635,7 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Attribute a parse tree.
      * @returns the attributed parse tree
      */
@@ -1304,7 +1679,10 @@ public class JavaCompiler {
         return env;
     }
 
-    /** Report the public api of a class that was supplied explicitly for compilation,
+    /**
+     * HCZ:?
+     *
+     *  Report the public api of a class that was supplied explicitly for compilation,
      *  for example on the command line to javac.
      * @param sym The symbol of the class.
      */
@@ -1313,6 +1691,7 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Perform dataflow checks on attributed parse trees.
      * These include checks for definite assignment and unreachable statements.
      * If any errors occur, an empty list will be returned.
@@ -1327,6 +1706,7 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Perform dataflow checks on an attributed parse tree.
      */
     public Queue<Env<AttrContext>> flow(Env<AttrContext> env) {
@@ -1336,6 +1716,7 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Perform dataflow checks on an attributed parse tree.
      */
     protected void flow(Env<AttrContext> env, Queue<Env<AttrContext>> results) {
@@ -1378,6 +1759,7 @@ public class JavaCompiler {
     }
 
     /**
+     * HCZ:?
      * Prepare attributed parse trees, in conjunction with their attribution contexts,
      * for source or code generation.
      * If any errors occur, an empty list will be returned.
@@ -1390,10 +1772,14 @@ public class JavaCompiler {
         return stopIfError(CompileState.FLOW, results);
     }
 
+    /**
+     * HCZ:?
+     */
     HashMap<Env<AttrContext>, Queue<Pair<Env<AttrContext>, JCClassDecl>>> desugaredEnvs =
             new HashMap<Env<AttrContext>, Queue<Pair<Env<AttrContext>, JCClassDecl>>>();
 
     /**
+     * HCZ:?
      * Prepare attributed parse trees, in conjunction with their attribution contexts,
      * for source or code generation. If the file was not listed on the command line,
      * the current implicitSourcePolicy is taken into account.
@@ -1560,7 +1946,9 @@ public class JavaCompiler {
 
     }
 
-    /** Generates the source or class file for a list of classes.
+    /**
+     * HCZ:?
+     *  Generates the source or class file for a list of classes.
      * The decision to generate a source file or a class file is
      * based upon the compiler's options.
      * Generation stops if an error occurs while writing files.
@@ -1569,6 +1957,9 @@ public class JavaCompiler {
         generate(queue, null);
     }
 
+    /**
+     * HCZ:?
+     */
     public void generate(Queue<Pair<Env<AttrContext>, JCClassDecl>> queue, Queue<JavaFileObject> results) {
         if (shouldStop(CompileState.GENERATE))
             return;
@@ -1620,8 +2011,7 @@ public class JavaCompiler {
             }
         }
     }
-
-        // where
+        // where   HCZ:X
         Map<JCCompilationUnit, Queue<Env<AttrContext>>> groupByFile(Queue<Env<AttrContext>> envs) {
             // use a LinkedHashMap to preserve the order of the original list as much as possible
             Map<JCCompilationUnit, Queue<Env<AttrContext>>> map = new LinkedHashMap<JCCompilationUnit, Queue<Env<AttrContext>>>();
@@ -1635,60 +2025,65 @@ public class JavaCompiler {
             }
             return map;
         }
-
+        /**
+         * HCZ:?
+         */
         JCClassDecl removeMethodBodies(JCClassDecl cdef) {
-            final boolean isInterface = (cdef.mods.flags & Flags.INTERFACE) != 0;
-            class MethodBodyRemover extends TreeTranslator {
-                @Override
-                public void visitMethodDef(JCMethodDecl tree) {
-                    tree.mods.flags &= ~Flags.SYNCHRONIZED;
-                    for (JCVariableDecl vd : tree.params)
-                        vd.mods.flags &= ~Flags.FINAL;
-                    tree.body = null;
-                    super.visitMethodDef(tree);
-                }
-                @Override
-                public void visitVarDef(JCVariableDecl tree) {
-                    if (tree.init != null && tree.init.type.constValue() == null)
-                        tree.init = null;
-                    super.visitVarDef(tree);
-                }
-                @Override
-                public void visitClassDef(JCClassDecl tree) {
-                    ListBuffer<JCTree> newdefs = new ListBuffer<>();
-                    for (List<JCTree> it = tree.defs; it.tail != null; it = it.tail) {
-                        JCTree t = it.head;
-                        switch (t.getTag()) {
-                        case CLASSDEF:
-                            if (isInterface ||
-                                (((JCClassDecl) t).mods.flags & (Flags.PROTECTED|Flags.PUBLIC)) != 0 ||
-                                (((JCClassDecl) t).mods.flags & (Flags.PRIVATE)) == 0 && ((JCClassDecl) t).sym.packge().getQualifiedName() == names.java_lang)
-                                newdefs.append(t);
-                            break;
-                        case METHODDEF:
-                            if (isInterface ||
-                                (((JCMethodDecl) t).mods.flags & (Flags.PROTECTED|Flags.PUBLIC)) != 0 ||
-                                ((JCMethodDecl) t).sym.name == names.init ||
-                                (((JCMethodDecl) t).mods.flags & (Flags.PRIVATE)) == 0 && ((JCMethodDecl) t).sym.packge().getQualifiedName() == names.java_lang)
-                                newdefs.append(t);
-                            break;
-                        case VARDEF:
-                            if (isInterface || (((JCVariableDecl) t).mods.flags & (Flags.PROTECTED|Flags.PUBLIC)) != 0 ||
-                                (((JCVariableDecl) t).mods.flags & (Flags.PRIVATE)) == 0 && ((JCVariableDecl) t).sym.packge().getQualifiedName() == names.java_lang)
-                                newdefs.append(t);
-                            break;
-                        default:
-                            break;
-                        }
+                final boolean isInterface = (cdef.mods.flags & Flags.INTERFACE) != 0;
+                class MethodBodyRemover extends TreeTranslator {
+                    @Override
+                    public void visitMethodDef(JCMethodDecl tree) {
+                        tree.mods.flags &= ~Flags.SYNCHRONIZED;
+                        for (JCVariableDecl vd : tree.params)
+                            vd.mods.flags &= ~Flags.FINAL;
+                        tree.body = null;
+                        super.visitMethodDef(tree);
                     }
-                    tree.defs = newdefs.toList();
-                    super.visitClassDef(tree);
+                    @Override
+                    public void visitVarDef(JCVariableDecl tree) {
+                        if (tree.init != null && tree.init.type.constValue() == null)
+                            tree.init = null;
+                        super.visitVarDef(tree);
+                    }
+                    @Override
+                    public void visitClassDef(JCClassDecl tree) {
+                        ListBuffer<JCTree> newdefs = new ListBuffer<>();
+                        for (List<JCTree> it = tree.defs; it.tail != null; it = it.tail) {
+                            JCTree t = it.head;
+                            switch (t.getTag()) {
+                            case CLASSDEF:
+                                if (isInterface ||
+                                    (((JCClassDecl) t).mods.flags & (Flags.PROTECTED|Flags.PUBLIC)) != 0 ||
+                                    (((JCClassDecl) t).mods.flags & (Flags.PRIVATE)) == 0 && ((JCClassDecl) t).sym.packge().getQualifiedName() == names.java_lang)
+                                    newdefs.append(t);
+                                break;
+                            case METHODDEF:
+                                if (isInterface ||
+                                    (((JCMethodDecl) t).mods.flags & (Flags.PROTECTED|Flags.PUBLIC)) != 0 ||
+                                    ((JCMethodDecl) t).sym.name == names.init ||
+                                    (((JCMethodDecl) t).mods.flags & (Flags.PRIVATE)) == 0 && ((JCMethodDecl) t).sym.packge().getQualifiedName() == names.java_lang)
+                                    newdefs.append(t);
+                                break;
+                            case VARDEF:
+                                if (isInterface || (((JCVariableDecl) t).mods.flags & (Flags.PROTECTED|Flags.PUBLIC)) != 0 ||
+                                    (((JCVariableDecl) t).mods.flags & (Flags.PRIVATE)) == 0 && ((JCVariableDecl) t).sym.packge().getQualifiedName() == names.java_lang)
+                                    newdefs.append(t);
+                                break;
+                            default:
+                                break;
+                            }
+                        }
+                        tree.defs = newdefs.toList();
+                        super.visitClassDef(tree);
+                    }
                 }
+                MethodBodyRemover r = new MethodBodyRemover();
+                return r.translate(cdef);
             }
-            MethodBodyRemover r = new MethodBodyRemover();
-            return r.translate(cdef);
-        }
 
+    /**
+     * HCZ:?
+     */
     public void reportDeferredDiagnostics() {
         if (errorCount() == 0
                 && annotationProcessingOccurred
@@ -1705,12 +2100,16 @@ public class JavaCompiler {
         }
     }
 
-    /** Close the compiler, flushing the logs
+    /**
+     * HCZ:X
+     *  Close the compiler, flushing the logs
      */
     public void close() {
         close(true);
     }
-
+    /**
+     * HCZ:X
+     */
     public void close(boolean disposeNames) {
         rootClasses = null;
         reader = null;
@@ -1757,12 +2156,16 @@ public class JavaCompiler {
             closeables = List.nil();
         }
     }
-
+    /**
+     * HCZ:X
+     */
     protected void printNote(String lines) {
         log.printRawLines(Log.WriterKind.NOTICE, lines);
     }
 
-    /** Print numbers of errors and warnings.
+    /**
+     * HCZ:X
+     *  Print numbers of errors and warnings.
      */
     public void printCount(String kind, int count) {
         if (count != 0) {
@@ -1782,11 +2185,16 @@ public class JavaCompiler {
     private static long now() {
         return System.currentTimeMillis();
     }
-
+    /**
+     * HCZ:获得当前时间与指定时间的时间差
+     */
     private static long elapsed(long then) {
         return now() - then;
     }
 
+    /**
+     * HCZ:?
+     */
     public void initRound(JavaCompiler prev) {
         genEndPos = prev.genEndPos;
         keepComments = prev.keepComments;

@@ -483,7 +483,11 @@ public abstract class JCTree implements Tree, Cloneable, DiagnosticPosition {
         public JCExpression pid;
         /** All definitions in this file (ClassDef, Import, and Skip) */
         public List<JCTree> defs;
-        /* The source file name. */
+        /**
+         * HCZ：Tree对象中，记录源代码文件路径
+         *
+         * The source file name.
+         */
         public JavaFileObject sourcefile;
         /** The package to which this compilation unit belongs. */
         public PackageSymbol packge;

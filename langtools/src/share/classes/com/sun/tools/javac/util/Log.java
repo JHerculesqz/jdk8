@@ -43,7 +43,9 @@ import com.sun.tools.javac.util.JCDiagnostic.DiagnosticType;
 
 import static com.sun.tools.javac.main.Option.*;
 
-/** A class for error logs. Reports errors and warnings, and
+/**
+ * HCZ：日志工具类
+ *  A class for error logs. Reports errors and warnings, and
  *  keeps track of error numbers and positions.
  *
  *  <p><b>This is NOT part of any supported API.

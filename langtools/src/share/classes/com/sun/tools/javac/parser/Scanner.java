@@ -25,16 +25,19 @@
 
 package com.sun.tools.javac.parser;
 
-import java.nio.*;
-import java.util.List;
-import java.util.ArrayList;
-
 import com.sun.tools.javac.util.Position.LineMap;
-import com.sun.tools.javac.parser.JavaTokenizer.*;
 
-import static com.sun.tools.javac.parser.Tokens.*;
+import java.nio.CharBuffer;
+import java.util.ArrayList;
+import java.util.List;
 
-/** The lexical analyzer maps an input stream consisting of
+import static com.sun.tools.javac.parser.Tokens.DUMMY;
+import static com.sun.tools.javac.parser.Tokens.Token;
+
+/**
+ * HCZ：实现了Lexer接口的Scanner对象
+ *
+ *  The lexical analyzer maps an input stream consisting of
  *  ASCII characters and Unicode escapes into a token sequence.
  *
  *  <p><b>This is NOT part of any supported API.
@@ -43,24 +46,40 @@ import static com.sun.tools.javac.parser.Tokens.*;
  *  deletion without notice.</b>
  */
 public class Scanner implements Lexer {
-
+    /**
+     * HCZ：Tokens对象
+     */
     private Tokens tokens;
 
-    /** The token, set by nextToken().
+    /**
+     * HCZ：调用nextToken()后，将得到的Token对象记录下来
+     *
+     *  The token, set by nextToken().
      */
     private Token token;
 
-    /** The previous token, set by nextToken().
+    /**
+     * HCZ：调用nextToken()后，完成解析Token对象后，将当前的Token对象记录为上一个Token对象
+     *
+     *  The previous token, set by nextToken().
      */
     private Token prevToken;
 
-    /** Buffer of saved tokens (used during lookahead)
+    /**
+     * HCZ：将已经遍历过的Token对象记录下来，便于lookahead场景调用
+     *
+     *  Buffer of saved tokens (used during lookahead)
      */
     private List<Token> savedTokens = new ArrayList<Token>();
 
+    /**
+     * HCZ：Java的Token分析器对象
+     */
     private JavaTokenizer tokenizer;
 
     /**
+     * HCZ：X
+     *
      * Create a scanner from the input array.  This method might
      * modify the array.  To avoid copying the input array, ensure
      * that {@code inputLength < input.length} or
@@ -74,20 +93,32 @@ public class Scanner implements Lexer {
         this(fac, new JavaTokenizer(fac, buf));
     }
 
+    /**
+     * HCZ：X
+     */
     protected Scanner(ScannerFactory fac, char[] buf, int inputLength) {
         this(fac, new JavaTokenizer(fac, buf, inputLength));
     }
 
+    /**
+     * HCZ：X
+     */
     protected Scanner(ScannerFactory fac, JavaTokenizer tokenizer) {
         this.tokenizer = tokenizer;
         tokens = fac.tokens;
         token = prevToken = DUMMY;
     }
 
+    /**
+     * HCZ：获得指定位置的Token对象
+     */
     public Token token() {
         return token(0);
     }
 
+    /**
+     * HCZ：获得指定位置的Token对象
+     */
     public Token token(int lookahead) {
         if (lookahead == 0) {
             return token;
@@ -96,26 +127,38 @@ public class Scanner implements Lexer {
             return savedTokens.get(lookahead - 1);
         }
     }
-    //where
+    //where HCZ：X
         private void ensureLookahead(int lookahead) {
             for (int i = savedTokens.size() ; i < lookahead ; i ++) {
                 savedTokens.add(tokenizer.readToken());
             }
         }
 
+    /**
+     * HCZ：获得上一个Token对象
+     */
     public Token prevToken() {
         return prevToken;
     }
 
+    /**
+     * HCZ：遍历下一个Token对象
+     */
     public void nextToken() {
+        //HCZ：将当前Token对象赋值给上一个Token对象
         prevToken = token;
+        //HCZ：设置当前Token对象
         if (!savedTokens.isEmpty()) {
             token = savedTokens.remove(0);
         } else {
+            //HCZ：调用JavaTokenizer对象#readToken()，解析获得当前Token对象
             token = tokenizer.readToken();
         }
     }
 
+    /**
+     * HCZ：拆分当前Token对象为2个Token对象，并返回第一个Token对象。如：<<<拆成<和<<两个Token对象。
+     */
     public Token split() {
         Token[] splitTokens = token.split(tokens);
         prevToken = splitTokens[0];
@@ -123,14 +166,23 @@ public class Scanner implements Lexer {
         return token;
     }
 
+    /**
+     * HCZ：创建LineMap对象
+     */
     public LineMap getLineMap() {
         return tokenizer.getLineMap();
     }
 
+    /**
+     * HCZ：X
+     */
     public int errPos() {
         return tokenizer.errPos();
     }
 
+    /**
+     * HCZ：X
+     */
     public void errPos(int pos) {
         tokenizer.errPos(pos);
     }

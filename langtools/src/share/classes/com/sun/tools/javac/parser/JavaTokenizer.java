@@ -34,7 +34,10 @@ import java.nio.CharBuffer;
 import static com.sun.tools.javac.parser.Tokens.*;
 import static com.sun.tools.javac.util.LayoutCharacters.*;
 
-/** The lexical analyzer maps an input stream consisting of
+/**
+ * HCZ：Java的Token分析器对象
+ *
+ *  The lexical analyzer maps an input stream consisting of
  *  ASCII characters and Unicode escapes into a token sequence.
  *
  *  <p><b>This is NOT part of any supported API.
@@ -43,55 +46,95 @@ import static com.sun.tools.javac.util.LayoutCharacters.*;
  *  deletion without notice.</b>
  */
 public class JavaTokenizer {
-
+    /**
+     * HCZ：debug标志位
+     */
     private static final boolean scannerDebug = false;
 
-    /** Allow hex floating-point literals.
+    /**
+     * HCZ：？
+     *  Allow hex floating-point literals.
      */
     private boolean allowHexFloats;
 
-    /** Allow binary literals.
+    /**
+     * HCZ：？
+     *  Allow binary literals.
      */
     private boolean allowBinaryLiterals;
 
-    /** Allow underscores in literals.
+    /**
+     * HCZ：？
+     *  Allow underscores in literals.
      */
     private boolean allowUnderscoresInLiterals;
 
-    /** The source language setting.
+    /**
+     * HCZ：？
+     *  The source language setting.
      */
     private Source source;
 
-    /** The log to be used for error reporting.
+    /**
+     * HCZ：日志对象
+     *
+     *  The log to be used for error reporting.
      */
     private final Log log;
 
-    /** The token factory. */
+    /**
+     * HCZ：Tokens对象
+     *
+     *  The token factory. */
     private final Tokens tokens;
 
-    /** The token kind, set by nextToken().
+    /**
+     * HCZ：nextToken方法记录的nextToken对象的TokenKind对象
+     *
+     *  The token kind, set by nextToken().
      */
     protected TokenKind tk;
 
-    /** The token's radix, set by nextToken().
+    /**
+     * HCZ：？
+     *
+     *  The token's radix, set by nextToken().
      */
     protected int radix;
 
-    /** The token's name, set by nextToken().
+    /**
+     * HCZ：nextToken方法记录的nextToken对象的Name对象
+     *
+     *  The token's name, set by nextToken().
      */
     protected Name name;
 
-    /** The position where a lexical error occurred;
+    /**
+     * HCZ：X
+     *
+     *  The position where a lexical error occurred;
      */
     protected int errPos = Position.NOPOS;
 
-    /** The Unicode reader (low-level stream reader).
+    /**
+     * HCZ：UnicodeReader对象
+     *
+     *  The Unicode reader (low-level stream reader).
      */
     protected UnicodeReader reader;
 
+    /**
+     * HCZ：ScanFactory对象
+     */
     protected ScannerFactory fac;
 
+    /**
+     * HCZ：？
+     */
     private static final boolean hexFloatsWork = hexFloatsWork();
+    /**
+     * HCZ：？
+     */
     private static boolean hexFloatsWork() {
         try {
             Float.valueOf("0x1.0p1");
@@ -102,6 +145,8 @@ public class JavaTokenizer {
     }
 
     /**
+     * HCZ：构造函数，会根据CharBuffer输入对象创建UnicodeReader
+     *
      * Create a scanner from the input array.  This method might
      * modify the array.  To avoid copying the input array, ensure
      * that {@code inputLength < input.length} or
@@ -115,10 +160,16 @@ public class JavaTokenizer {
         this(fac, new UnicodeReader(fac, buf));
     }
 
+    /**
+     * HCZ：X
+     */
     protected JavaTokenizer(ScannerFactory fac, char[] buf, int inputLength) {
         this(fac, new UnicodeReader(fac, buf, inputLength));
     }
 
+    /**
+     * HCZ：X
+     */
     protected JavaTokenizer(ScannerFactory fac, UnicodeReader reader) {
         this.fac = fac;
         this.log = fac.log;
@@ -130,7 +181,9 @@ public class JavaTokenizer {
         this.allowUnderscoresInLiterals = source.allowUnderscoresInLiterals();
     }
 
-    /** Report an error at the given position using the provided arguments.
+    /**
+     * HCZ：X
+     *  Report an error at the given position using the provided arguments.
      */
     protected void lexError(int pos, String key, Object... args) {
         log.error(pos, key, args);
@@ -138,9 +191,13 @@ public class JavaTokenizer {
         errPos = pos;
     }
 
-    /** Read next character in character or string literal and copy into sbuf.
+    /**
+     * HCZ：处理转义字符串
+     *
+     *  Read next character in character or string literal and copy into sbuf.
      */
     private void scanLitChar(int pos) {
+        //HCZ：处理转义字符
         if (reader.ch == '\\') {
             if (reader.peekChar() == '\\' && !reader.isUnicode()) {
                 reader.skipChar();
@@ -151,6 +208,7 @@ public class JavaTokenizer {
                 case '0': case '1': case '2': case '3':
                 case '4': case '5': case '6': case '7':
                     char leadch = reader.ch;
+                    //HCZ：将8进制表示的字符串转为10进制数
                     int oct = reader.digit(pos, 8);
                     reader.scanChar();
                     if ('0' <= reader.ch && reader.ch <= '7') {
@@ -183,11 +241,16 @@ public class JavaTokenizer {
                     lexError(reader.bp, "illegal.esc.char");
                 }
             }
-        } else if (reader.bp != reader.buflen) {
+        }
+        //HCZ:处理非转义字符
+        else if (reader.bp != reader.buflen) {
             reader.putChar(true);
         }
     }
 
+    /**
+     * HCZ：？
+     */
     private void scanDigits(int pos, int digitRadix) {
         char saveCh;
         int savePos;
@@ -208,7 +271,10 @@ public class JavaTokenizer {
             lexError(savePos, "illegal.underscore");
     }
 
-    /** Read fractional part of hexadecimal floating point number.
+    /**
+     * HCZ：？
+     *
+     *  Read fractional part of hexadecimal floating point number.
      */
     private void scanHexExponentAndSuffix(int pos) {
         if (reader.ch == 'p' || reader.ch == 'P') {
@@ -244,7 +310,10 @@ public class JavaTokenizer {
         }
     }
 
-    /** Read fractional part of floating point number.
+    /**
+     * HCZ：？
+     *
+     *  Read fractional part of floating point number.
      */
     private void scanFraction(int pos) {
         skipIllegalUnderscores();
@@ -268,7 +337,10 @@ public class JavaTokenizer {
         }
     }
 
-    /** Read fractional part and 'd' or 'f' suffix of floating point number.
+    /**
+     * HCZ：处理10进制中的小数以及后缀部分
+     *
+     *  Read fractional part and 'd' or 'f' suffix of floating point number.
      */
     private void scanFractionAndSuffix(int pos) {
         radix = 10;
@@ -284,7 +356,10 @@ public class JavaTokenizer {
         }
     }
 
-    /** Read fractional part and 'd' or 'f' suffix of floating point number.
+    /**
+     * HCZ：处理16进制的小数以及后缀部分
+     *
+     *  Read fractional part and 'd' or 'f' suffix of floating point number.
      */
     private void scanHexFractionAndSuffix(int pos, boolean seendigit) {
         radix = 16;
@@ -301,6 +376,9 @@ public class JavaTokenizer {
             scanHexExponentAndSuffix(pos);
     }
 
+    /**
+     * HCZ：处理下划线字符
+     */
     private void skipIllegalUnderscores() {
         if (reader.ch == '_') {
             lexError(reader.bp, "illegal.underscore");
@@ -309,7 +387,10 @@ public class JavaTokenizer {
         }
     }
 
-    /** Read a number.
+    /**
+     * HCZ：？
+     *
+     *  Read a number.
      *  @param radix  The radix of the number; one of 2, j8, 10, 16.
      */
     private void scanNumber(int pos, int radix) {
@@ -343,14 +424,19 @@ public class JavaTokenizer {
         }
     }
 
-    /** Read an identifier.
+    /**
+     * HCZ：扫描标识符。while-true，打破条件是非字母、数字、下划线、美元符号的ASCII。
+     *
+     *  Read an identifier.
      */
     private void scanIdent() {
         boolean isJavaIdentifierPart;
         char high;
+        //HCZ：扩容sbuf、将ch追加进sbuf、触发scanChar方法
         reader.putChar(true);
         do {
             switch (reader.ch) {
+                //HCZ:字母、数字、下划线、美元符号，不做任何处理
             case 'A': case 'B': case 'C': case 'D': case 'E':
             case 'F': case 'G': case 'H': case 'I': case 'J':
             case 'K': case 'L': case 'M': case 'N': case 'O':
@@ -367,6 +453,7 @@ public class JavaTokenizer {
             case '0': case '1': case '2': case '3': case '4':
             case '5': case '6': case '7': case '8': case '9':
                 break;
+                //HCZ：？
             case '\u0000': case '\u0001': case '\u0002': case '\u0003':
             case '\u0004': case '\u0005': case '\u0006': case '\u0007':
             case '\u0008': case '\u000E': case '\u000F': case '\u0010':
@@ -376,7 +463,9 @@ public class JavaTokenizer {
             case '\u007F':
                 reader.scanChar();
                 continue;
+                //HCZ：EOI
             case '\u001A': // EOI is also a legal identifier part
+                //HCZ：已经没有待处理的字符了
                 if (reader.bp >= reader.buflen) {
                     name = reader.name();
                     tk = tokens.lookupKind(name);
@@ -385,17 +474,22 @@ public class JavaTokenizer {
                 reader.scanChar();
                 continue;
             default:
+                //HCZ：如果ch是ASCII编码中的一个字符，则不管(因为所有合法的ASCII字符已经在上面的case分支处理过了)
                 if (reader.ch < '\u0080') {
                     // all ASCII range chars already handled, above
                     isJavaIdentifierPart = false;
-                } else {
+                }
+                //HCZ：？待研究
+                else {
                     if (Character.isIdentifierIgnorable(reader.ch)) {
                         reader.scanChar();
                         continue;
                     } else {
+                        //HCZ：？获取高代理项
                         high = reader.scanSurrogates();
                         if (high != 0) {
                             reader.putChar(high);
+                            //HCZ：判断通过高代理项和低代理项表示的字符是否为合法标识符的首字母
                             isJavaIdentifierPart = Character.isJavaIdentifierPart(
                                 Character.toCodePoint(high, reader.ch));
                         } else {
@@ -409,11 +503,15 @@ public class JavaTokenizer {
                     return;
                 }
             }
+            //HCZ：调用UnicodeReader对象#putChar方法进行sbuf数组的扩容
             reader.putChar(true);
         } while (true);
     }
 
-    /** Return true if reader.ch can be part of an operator.
+    /**
+     * HCZ：是否是特殊字符
+     *
+     *  Return true if reader.ch can be part of an operator.
      */
     private boolean isSpecial(char ch) {
         switch (ch) {
@@ -427,7 +525,10 @@ public class JavaTokenizer {
         }
     }
 
-    /** Read longest possible sequence of special characters and convert
+    /**
+     * HCZ：扫描标识符号，尽可能多地的扫描出完整标识符号，如：/=会被扫成一个标识符号。
+     *
+     *  Read longest possible sequence of special characters and convert
      *  to token.
      */
     private void scanOperator() {
@@ -445,10 +546,11 @@ public class JavaTokenizer {
         }
     }
 
-    /** Read token.
+    /**
+     * HCZ：被Scanner对象#nextToken方法调用
+     *  Read token.
      */
     public Token readToken() {
-
         reader.sp = 0;
         name = null;
         radix = 0;
@@ -461,18 +563,23 @@ public class JavaTokenizer {
             loop: while (true) {
                 pos = reader.bp;
                 switch (reader.ch) {
+                    //HCZ：特殊字符-空格。[关键点]下述3个case分支都当做空格处理
                 case ' ': // (Spec 3.6)
+                    //HCZ：特殊字符-水平制表符，即Tab键
                 case '\t': // (Spec 3.6)
+                    //HCZ：特殊字符-换行、换页符
                 case FF: // (Spec 3.6)
                     do {
                         reader.scanChar();
                     } while (reader.ch == ' ' || reader.ch == '\t' || reader.ch == FF);
                     processWhiteSpace(pos, reader.bp);
                     break;
+                    //HCZ：特殊字符-换行符。
                 case LF: // (Spec 3.4)
                     reader.scanChar();
                     processLineTerminator(pos, reader.bp);
                     break;
+                    //HCZ：特殊字符-回车。
                 case CR: // (Spec 3.4)
                     reader.scanChar();
                     if (reader.ch == LF) {
@@ -480,6 +587,7 @@ public class JavaTokenizer {
                     }
                     processLineTerminator(pos, reader.bp);
                     break;
+                    //HCZ：标识符
                 case 'A': case 'B': case 'C': case 'D': case 'E':
                 case 'F': case 'G': case 'H': case 'I': case 'J':
                 case 'K': case 'L': case 'M': case 'N': case 'O':
@@ -495,19 +603,24 @@ public class JavaTokenizer {
                 case '$': case '_':
                     scanIdent();
                     break loop;
+                    //HCZ：数字-0
                 case '0':
                     reader.scanChar();
+                    //HCZ:如果是16进制表示的整数or浮点数，
                     if (reader.ch == 'x' || reader.ch == 'X') {
                         reader.scanChar();
                         skipIllegalUnderscores();
                         if (reader.ch == '.') {
+                            //HCZ：处理16进制的小数以及后缀部分
                             scanHexFractionAndSuffix(pos, false);
                         } else if (reader.digit(pos, 16) < 0) {
                             lexError(pos, "invalid.hex.number");
                         } else {
                             scanNumber(pos, 16);
                         }
-                    } else if (reader.ch == 'b' || reader.ch == 'B') {
+                    }
+                    //HCZ：处理2进制表示的整数
+                    else if (reader.ch == 'b' || reader.ch == 'B') {
                         if (!allowBinaryLiterals) {
                             lexError(pos, "unsupported.binary.lit", source.name);
                             allowBinaryLiterals = true;
@@ -519,7 +632,9 @@ public class JavaTokenizer {
                         } else {
                             scanNumber(pos, 2);
                         }
-                    } else {
+                    }
+                    //HCZ：处理8进制表示的整数
+                    else {
                         reader.putChar('0');
                         if (reader.ch == '_') {
                             int savePos = reader.bp;
@@ -533,16 +648,21 @@ public class JavaTokenizer {
                         scanNumber(pos, 8);
                     }
                     break loop;
+                    //HCZ：处理10进制表示的整数or浮点数
                 case '1': case '2': case '3': case '4':
                 case '5': case '6': case '7': case '8': case '9':
                     scanNumber(pos, 10);
                     break loop;
                 case '.':
                     reader.scanChar();
+                    //HCZ：处理10进制中的小数部分
                     if ('0' <= reader.ch && reader.ch <= '9') {
                         reader.putChar('.');
+                        //HCZ：处理10进制中的小数以及后缀部分
                         scanFractionAndSuffix(pos);
-                    } else if (reader.ch == '.') {
+                    }
+                    //HCZ：处理变长参数
+                    else if (reader.ch == '.') {
                         int savePos = reader.bp;
                         reader.putChar('.'); reader.putChar('.', true);
                         if (reader.ch == '.') {
@@ -552,28 +672,40 @@ public class JavaTokenizer {
                         } else {
                             lexError(savePos, "illegal.dot");
                         }
-                    } else {
+                    }
+                    //HCZ：处理分隔符
+                    else {
                         tk = TokenKind.DOT;
                     }
                     break loop;
+                    //HCZ：分隔符处理
                 case ',':
                     reader.scanChar(); tk = TokenKind.COMMA; break loop;
+                    //HCZ：分隔符处理
                 case ';':
                     reader.scanChar(); tk = TokenKind.SEMI; break loop;
+                    //HCZ：分隔符处理
                 case '(':
                     reader.scanChar(); tk = TokenKind.LPAREN; break loop;
+                    //HCZ：分隔符处理
                 case ')':
                     reader.scanChar(); tk = TokenKind.RPAREN; break loop;
+                    //HCZ：分隔符处理
                 case '[':
                     reader.scanChar(); tk = TokenKind.LBRACKET; break loop;
+                    //HCZ：分隔符处理
                 case ']':
                     reader.scanChar(); tk = TokenKind.RBRACKET; break loop;
+                    //HCZ：分隔符处理
                 case '{':
                     reader.scanChar(); tk = TokenKind.LBRACE; break loop;
+                    //HCZ：分隔符处理
                 case '}':
                     reader.scanChar(); tk = TokenKind.RBRACE; break loop;
+                    //HCZ：斜杠作为首字符
                 case '/':
                     reader.scanChar();
+                    //HCZ：单行注释
                     if (reader.ch == '/') {
                         do {
                             reader.scanCommentChar();
@@ -618,6 +750,7 @@ public class JavaTokenizer {
                         tk = TokenKind.SLASH;
                     }
                     break loop;
+                    //HCZ：单引号作为首字符
                 case '\'':
                     reader.scanChar();
                     if (reader.ch == '\'') {
@@ -635,8 +768,10 @@ public class JavaTokenizer {
                         }
                     }
                     break loop;
+                    //HCZ：双引号作为首字符-字符串常量
                 case '\"':
                     reader.scanChar();
+                    //HCZ：如果ch不是双引号、不为回车且有待处理字符，则循环调用scanLitChar方法扫描字符串常量
                     while (reader.ch != '\"' && reader.ch != CR && reader.ch != LF && reader.bp < reader.buflen)
                         scanLitChar(pos);
                     if (reader.ch == '\"') {
@@ -646,28 +781,37 @@ public class JavaTokenizer {
                         lexError(pos, "unclosed.str.lit");
                     }
                     break loop;
+                    //HCZ：如一些运算符首字符、以汉字开头的标识符等
                 default:
+                    //HCZ:如果ch是特殊字符
                     if (isSpecial(reader.ch)) {
                         scanOperator();
-                    } else {
+                    }
+                    //HCZ:如果ch是标识符的首字母
+                    else {
                         boolean isJavaIdentifierStart;
+                        //HCZ:ch是ASCII编码中的一个字符
                         if (reader.ch < '\u0080') {
                             // all ASCII range chars already handled, above
                             isJavaIdentifierStart = false;
                         } else {
+                            //HCZ:获得高代理项
                             char high = reader.scanSurrogates();
                             if (high != 0) {
                                 reader.putChar(high);
-
+                                //HCZ:方法会判断通过高代理项和低代理项表示的字符是否是合法标识符的首字符
                                 isJavaIdentifierStart = Character.isJavaIdentifierStart(
                                     Character.toCodePoint(high, reader.ch));
                             } else {
                                 isJavaIdentifierStart = Character.isJavaIdentifierStart(reader.ch);
                             }
                         }
+                        //HCZ：是合法标识符的首字符
                         if (isJavaIdentifierStart) {
                             scanIdent();
-                        } else if (reader.bp == reader.buflen || reader.ch == EOI && reader.bp + 1 == reader.buflen) { // JLS 3.5
+                        }
+                        //HCZ：已经没有待处理的字符了
+                        else if (reader.bp == reader.buflen || reader.ch == EOI && reader.bp + 1 == reader.buflen) { // JLS 3.5
                             tk = TokenKind.EOF;
                             pos = reader.buflen;
                         } else {
@@ -682,6 +826,7 @@ public class JavaTokenizer {
                 }
             }
             endPos = reader.bp;
+            //HCZ：根据当前Token对象.tag属性+计算好的token、pos、endPos对象，创建对应的Token对象
             switch (tk.tag) {
                 case DEFAULT: return new Token(tk, pos, endPos, comments);
                 case NAMED: return new NamedToken(tk, pos, endPos, name, comments);
@@ -691,6 +836,7 @@ public class JavaTokenizer {
             }
         }
         finally {
+            //HCZ：scannerDebug属性一直是false，估计是调时的时候打开用来看日志
             if (scannerDebug) {
                     System.out.println("nextToken(" + pos
                                        + "," + endPos + ")=|" +
@@ -699,26 +845,34 @@ public class JavaTokenizer {
             }
         }
     }
-    //where
+    //where HCZ：X
         List<Comment> addComment(List<Comment> comments, Comment comment) {
             return comments == null ?
                     List.of(comment) :
                     comments.prepend(comment);
         }
 
-    /** Return the position where a lexical error occurred;
+    /**
+     * HCZ：X
+     *
+     *  Return the position where a lexical error occurred;
      */
     public int errPos() {
         return errPos;
     }
 
-    /** Set the position where a lexical error occurred;
+    /**
+     * HCZ：X
+     *
+     *  Set the position where a lexical error occurred;
      */
     public void errPos(int pos) {
         errPos = pos;
     }
 
     /**
+     * HCZ:X
+     *
      * Called when a complete comment has been scanned. pos and endPos
      * will mark the comment boundary.
      */
@@ -733,6 +887,8 @@ public class JavaTokenizer {
     }
 
     /**
+     * HCZ:X
+     *
      * Called when a complete whitespace run has been scanned. pos and endPos
      * will mark the whitespace boundary.
      */
@@ -745,6 +901,7 @@ public class JavaTokenizer {
     }
 
     /**
+     * HCZ:X
      * Called when a line terminator has been processed.
      */
     protected void processLineTerminator(int pos, int endPos) {
@@ -755,7 +912,10 @@ public class JavaTokenizer {
                                + "|");
     }
 
-    /** Build a map for translating between line numbers and
+    /**
+     * HCZ：创建LineMap对象
+     *
+     *  Build a map for translating between line numbers and
      * positions in the input.
      *
      * @return a LineMap */
@@ -763,8 +923,9 @@ public class JavaTokenizer {
         return Position.makeLineMap(reader.getRawCharacters(), reader.buflen, false);
     }
 
-
     /**
+     * HCZ：X
+     *
     * Scan a documentation comment; determine if a deprecated tag is present.
     * Called once the initial /, * have been skipped, positioned at the second *
     * (which is treated as the beginning of the first line).

@@ -28,7 +28,8 @@ package com.sun.tools.javac.util;
 import java.util.BitSet;
 import static com.sun.tools.javac.util.LayoutCharacters.*;
 
-/** A class that defines source code positions as simple character
+/**
+ *  A class that defines source code positions as simple character
  *  offsets from the beginning of the file. The first character
  *  is at position 0.
  *
@@ -59,7 +60,10 @@ public class Position {
      */
     private Position() {}
 
-    /** A two-way map between line/column numbers and positions,
+    /**
+     * HCZ：创建LineMap对象
+     *
+     *  A two-way map between line/column numbers and positions,
      *  derived from a scan done at creation time.  Tab expansion is
      *  optionally supported via a character map.  Text content
      *  is not retained.
@@ -101,6 +105,9 @@ public class Position {
         return (line << LINESHIFT) + col;
     }
 
+    /**
+     * HCZ：源码行和列与当前Token对应字符的坐标关系
+     */
     public static interface LineMap extends com.sun.source.tree.LineMap {
         /** Find the start position of a line.
          *

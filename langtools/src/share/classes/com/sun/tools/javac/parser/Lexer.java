@@ -29,6 +29,8 @@ import com.sun.tools.javac.parser.Tokens.*;
 import com.sun.tools.javac.util.Position.LineMap;
 
 /**
+ * HCZ：词法分析接口，Scanner实现了此接口
+ *
  * The lexical analyzer maps an input stream consisting of ASCII
  * characters and Unicode escapes into a token sequence.
  *
@@ -40,26 +42,36 @@ import com.sun.tools.javac.util.Position.LineMap;
 public interface Lexer {
 
     /**
+     * HCZ：遍历下一个Token对象
+     *
      * Consume the next token.
      */
     void nextToken();
 
     /**
+     * HCZ：获得当前的Token对象
+     *
      * Return current token.
      */
     Token token();
 
     /**
+     * HCZ：获得指定的Token对象
+     *
      * Return token with given lookahead.
      */
     Token token(int lookahead);
 
     /**
+     * HCZ：获得前一个的Token对象
+     *
      * Return the last character position of the previous token.
      */
     Token prevToken();
 
     /**
+     * HCZ：拆分当前Token对象为2个Token对象，并返回第一个Token对象。如：<<<拆成<和<<两个Token对象。
+     *
      * Splits the current token in two and return the first (splitted) token.
      * For instance {@literal '<<<'} is split into two tokens
      * {@literal '<'} and {@literal '<<'} respectively,
@@ -68,11 +80,15 @@ public interface Lexer {
     Token split();
 
     /**
+     * HCZ：X
+     *
      * Return the position where a lexical error occurred;
      */
     int errPos();
 
     /**
+     * HCZ：X
+     *
      * Set the position where a lexical error occurred;
      */
     void errPos(int pos);

@@ -41,6 +41,8 @@ import com.sun.tools.javac.tree.JCTree.JCStatement;
  */
 public interface Parser {
     /**
+     * HCZ：词法解析，获得抽象语法树
+     *
      * Parse a compilation unit.
      * @return a compilation unit
      */
