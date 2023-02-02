@@ -357,7 +357,7 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
     jboolean jvmpathExists;
 
     /* Compute/set the name of the executable */
-    SetExecname(*pargv);
+    SetExecname(*pargv); // 获得可执行程序的绝对路径(如:java.exe的绝对路径)
 
     /* Check data model flags, and exec process, if needed */
     {
@@ -397,7 +397,7 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
       { /* open new scope to declare local variables */
         int i;
 
-        newargv = (char **)JLI_MemAlloc((argc+1) * sizeof(char*));
+        newargv = (char **)JLI_MemAlloc((argc+1) * sizeof(char*));  // 检查和处理-d32/-d64
         newargv[newargc++] = argv[0];
 
         /* scan for data model arguments and remove from argument list;
@@ -445,20 +445,20 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
          jvmpath does not exist */
       if (wanted == running) {
         /* Find out where the JRE is that we will be using. */
-        if (!GetJREPath(jrepath, so_jrepath, arch, JNI_FALSE) ) {
+        if (!GetJREPath(jrepath, so_jrepath, arch, JNI_FALSE) ) { // JRE不存在，则异常结束
           JLI_ReportErrorMessage(JRE_ERROR1);
           exit(2);
         }
-        JLI_Snprintf(jvmcfg, so_jvmcfg, "%s%slib%s%s%sjvm.cfg",
+        JLI_Snprintf(jvmcfg, so_jvmcfg, "%s%slib%s%s%sjvm.cfg", // 打印jvm.cfg
                      jrepath, FILESEP, FILESEP,  arch, FILESEP);
         /* Find the specified JVM type */
-        if (ReadKnownVMs(jvmcfg, JNI_FALSE) < 1) {
+        if (ReadKnownVMs(jvmcfg, JNI_FALSE) < 1) { // jvm.cfg用来支持1个jre环境中安装多个JVM库
           JLI_ReportErrorMessage(CFG_ERROR7);
           exit(1);
         }
 
         jvmpath[0] = '\0';
-        jvmtype = CheckJvmType(pargc, pargv, JNI_FALSE);
+        jvmtype = CheckJvmType(pargc, pargv, JNI_FALSE); // 获得jvmtype(如:jvmtype=server)
         if (JLI_StrCmp(jvmtype, "ERROR") == 0) {
             JLI_ReportErrorMessage(CFG_ERROR9);
             exit(4);
@@ -467,7 +467,7 @@ CreateExecutionEnvironment(int *pargc, char ***pargv,
         if (!GetJVMPath(jrepath, jvmtype, jvmpath, so_jvmpath, arch, 0 )) {
           JLI_ReportErrorMessage(CFG_ERROR8, jvmtype, jvmpath);
           exit(4);
-        }
+        } // 获得jvmpath(如：../linux-x86_64-normal-server-slowdebug/jdk/lib/amd64/server/libjvm.so)
         /*
          * we seem to have everything we need, so without further ado
          * we return back, otherwise proceed to set the environment.
@@ -814,7 +814,7 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
 
     JLI_TraceLauncher("JVM path is %s\n", jvmpath);
 
-    libjvm = dlopen(jvmpath, RTLD_NOW + RTLD_GLOBAL);
+    libjvm = dlopen(jvmpath, RTLD_NOW + RTLD_GLOBAL); // 打开libjvm.so
     if (libjvm == NULL) {
 #if defined(__solaris__) && defined(__sparc) && !defined(_LP64) /* i.e. 32-bit sparc */
       FILE * fp;
@@ -867,21 +867,21 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
     }
 
     ifn->CreateJavaVM = (CreateJavaVM_t)
-        dlsym(libjvm, "JNI_CreateJavaVM");
+        dlsym(libjvm, "JNI_CreateJavaVM"); // 获得JNI_CreateJavaVM函数的句柄
     if (ifn->CreateJavaVM == NULL) {
         JLI_ReportErrorMessage(DLL_ERROR2, jvmpath, dlerror());
         return JNI_FALSE;
     }
 
     ifn->GetDefaultJavaVMInitArgs = (GetDefaultJavaVMInitArgs_t)
-        dlsym(libjvm, "JNI_GetDefaultJavaVMInitArgs");
+        dlsym(libjvm, "JNI_GetDefaultJavaVMInitArgs");  // 获得JNI_GetDefaultJavaVMInitArgs函数的句柄
     if (ifn->GetDefaultJavaVMInitArgs == NULL) {
         JLI_ReportErrorMessage(DLL_ERROR2, jvmpath, dlerror());
         return JNI_FALSE;
     }
 
     ifn->GetCreatedJavaVMs = (GetCreatedJavaVMs_t)
-        dlsym(libjvm, "JNI_GetCreatedJavaVMs");
+        dlsym(libjvm, "JNI_GetCreatedJavaVMs"); // 获得JNI_GetCreatedJavaVMs函数的句柄
     if (ifn->GetCreatedJavaVMs == NULL) {
         JLI_ReportErrorMessage(DLL_ERROR2, jvmpath, dlerror());
         return JNI_FALSE;
@@ -904,7 +904,7 @@ LoadJavaVM(const char *jvmpath, InvocationFunctions *ifn)
  * we use FindExecName to compute the executable name.
  */
 const char*
-SetExecname(char **argv)
+SetExecname(char **argv) // solaris/linux/windows上获取可执行程序的绝对路径(如：java.exe的绝对路径)
 {
     char* exec_path = NULL;
 #if defined(__solaris__)
@@ -1010,9 +1010,9 @@ ContinueInNewThread0(int (JNICALL *continuation)(void *), jlong stack_size, void
       pthread_attr_setstacksize(&attr, stack_size);
     }
 
-    if (pthread_create(&tid, &attr, (void *(*)(void*))continuation, (void*)args) == 0) {
+    if (pthread_create(&tid, &attr, (void *(*)(void*))continuation, (void*)args) == 0) {// 使用pthread创建linux上的系统线程，并执行JavaMain
       void * tmp;
-      pthread_join(tid, &tmp);
+      pthread_join(tid, &tmp); // 阻塞，等待创建系统线程并执行JavaMain
       rslt = (int)tmp;
     } else {
      /*
@@ -1059,7 +1059,7 @@ JVMInit(InvocationFunctions* ifn, jlong threadStackSize,
         int mode, char *what, int ret)
 {
     ShowSplashScreen();
-    return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret);
+    return ContinueInNewThread(ifn, threadStackSize, argc, argv, mode, what, ret); // 创建线程
 }
 
 void

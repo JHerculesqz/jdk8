@@ -5161,7 +5161,7 @@ _JNI_IMPORT_OR_EXPORT_ jint JNICALL JNI_CreateJavaVM(JavaVM **vm, void **penv, v
    * sets safe_to_recreate_vm to 1, such that any new call to
    * JNI_CreateJavaVM will immediately fail using the above logic.
    */
-  bool can_try_again = true;
+  bool can_try_again = true; // 重试标志位，用于恢复创建JVM时可接受的某些异常
 
   result = Threads::create_vm((JavaVMInitArgs*) args, &can_try_again);
   if (result == JNI_OK) {

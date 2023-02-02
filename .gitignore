@@ -6,3 +6,4 @@ build/
 hotspot/.cproject
 hotspot/.project
 hotspot/.settings/
+config.log

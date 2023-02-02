@@ -991,14 +991,14 @@ bool os::create_attached_thread(JavaThread* thread) {
 #endif
 
   // Allocate the OSThread object
-  OSThread* osthread = new OSThread(NULL, NULL);
+  OSThread* osthread = new OSThread(NULL, NULL); // 创建OSThread对象
 
   if (osthread == NULL) {
     return false;
   }
 
   // Store pthread info into the OSThread
-  osthread->set_thread_id(os::Linux::gettid());
+  osthread->set_thread_id(os::Linux::gettid()); // OSThread对象记录当前的系统线程(就是Java的main线程对应的真正的系统线程)
   osthread->set_pthread_id(::pthread_self());
 
   // initialize floating point control register
@@ -1007,7 +1007,7 @@ bool os::create_attached_thread(JavaThread* thread) {
   // Initial thread state is RUNNABLE
   osthread->set_state(RUNNABLE);
 
-  thread->set_osthread(osthread);
+  thread->set_osthread(osthread); // JavaThread对象记录OSThread对象，间接记录了Java的main线程对应的真正的系统线程
 
   if (UseNUMA) {
     int lgrp_id = os::numa_get_group_id();

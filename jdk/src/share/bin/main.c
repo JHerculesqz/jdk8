@@ -90,7 +90,7 @@ WinMain(HINSTANCE inst, HINSTANCE previnst, LPSTR cmdline, int cmdshow)
 
 #else /* JAVAW */
 int
-main(int argc, char **argv)
+main(int argc, char **argv) // JVM入口
 {
     int margc;
     char** margv;

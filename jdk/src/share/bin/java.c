@@ -231,30 +231,30 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argc */
      *     (Note: This side effect has been disabled.  See comment on
      *     bugid 5030265 below.)
      */
-    SelectVersion(argc, argv, &main_class);
+    SelectVersion(argc, argv, &main_class); // 根据manifest或命令行，读取Java版本
 
     CreateExecutionEnvironment(&argc, &argv,
                                jrepath, sizeof(jrepath),
                                jvmpath, sizeof(jvmpath),
-                               jvmcfg,  sizeof(jvmcfg));
+                               jvmcfg,  sizeof(jvmcfg)); // 初始化执行环境(jre/libjvm.so/jvm.cfg路径)
 
     ifn.CreateJavaVM = 0;
     ifn.GetDefaultJavaVMInitArgs = 0;
 
     if (JLI_IsTraceLauncher()) {
-        start = CounterGet();
+        start = CounterGet(); // 加载JVM开始计时
     }
 
-    if (!LoadJavaVM(jvmpath, &ifn)) {
+    if (!LoadJavaVM(jvmpath, &ifn)) { // 加载libjvm.so
         return(6);
     }
 
     if (JLI_IsTraceLauncher()) {
-        end   = CounterGet();
+        end   = CounterGet(); // 加载JVM结束计时
     }
 
     JLI_TraceLauncher("%ld micro seconds to LoadJavaVM\n",
-             (long)(jint)Counter2Micros(end-start));
+             (long)(jint)Counter2Micros(end-start)); // 打印加载JVM的时长
 
     ++argv;
     --argc;
@@ -267,17 +267,17 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argc */
         }
     } else {
         /* Set default CLASSPATH */
-        cpath = getenv("CLASSPATH");
+        cpath = getenv("CLASSPATH"); // 从环境变量中获得CLASSPATH
         if (cpath == NULL) {
             cpath = ".";
         }
-        SetClassPath(cpath);
+        SetClassPath(cpath); // 设置CLASSPATH(如：构造-Djava.class.path=.:...)
     }
 
     /* Parse command line options; if the return value of
      * ParseArguments is false, the program should exit.
      */
-    if (!ParseArguments(&argc, &argv, &mode, &what, &ret, jrepath))
+    if (!ParseArguments(&argc, &argv, &mode, &what, &ret, jrepath)) // 解析命令行选项
     {
         return(ret);
     }
@@ -291,12 +291,12 @@ JLI_Launch(int argc, char ** argv,              /* main argc, argc */
     SetJavaCommandLineProp(what, argc, argv);
 
     /* Set the -Dsun.java.launcher pseudo property */
-    SetJavaLauncherProp();
+    SetJavaLauncherProp(); // 构造-Dsun.java.command=com.firelord.Test
 
     /* set the -Dsun.java.launcher.* platform properties */
-    SetJavaLauncherPlatformProps();
+    SetJavaLauncherPlatformProps(); // 构造-Dsun.java.launcher.pid=104179
 
-    return JVMInit(&ifn, threadStackSize, argc, argv, mode, what, ret);
+    return JVMInit(&ifn, threadStackSize, argc, argv, mode, what, ret); // 初始化JVM(含创建jvm线程(main线程)/java线程、jvm线程和java线程相互映射)
 }
 /*
  * Always detach the main thread so that it appears to have ended when
@@ -364,11 +364,11 @@ JavaMain(void * _args)
     int ret = 0;
     jlong start, end;
 
-    RegisterThread();
+    RegisterThread(); // java_md_solinux.c没实现
 
     /* Initialize the virtual machine */
-    start = CounterGet();
-    if (!InitializeJVM(&vm, &env, &ifn)) {
+    start = CounterGet(); // ?
+    if (!InitializeJVM(&vm, &env, &ifn)) { // 初始化JVM，创建虚拟机，创建main线程
         JLI_ReportErrorMessage(JVM_ERROR1);
         exit(1);
     }
@@ -436,7 +436,7 @@ JavaMain(void * _args)
      * This method also correctly handles launching existing JavaFX
      * applications that may or may not have a Main-Class manifest entry.
      */
-    mainClass = LoadMainClass(env, mode, what);
+    mainClass = LoadMainClass(env, mode, what); // 加载Java的MainClass
     CHECK_EXCEPTION_NULL_LEAVE(mainClass);
     /*
      * In some cases when launching an application that needs a helper, e.g., a
@@ -461,22 +461,22 @@ JavaMain(void * _args)
      * stacks are not in the application stack trace.
      */
     mainID = (*env)->GetStaticMethodID(env, mainClass, "main",
-                                       "([Ljava/lang/String;)V");
+                                       "([Ljava/lang/String;)V"); // 获得Java的main函数的方法Id
     CHECK_EXCEPTION_NULL_LEAVE(mainID);
 
     /* Build platform specific argument array */
-    mainArgs = CreateApplicationArgs(env, argv, argc);
+    mainArgs = CreateApplicationArgs(env, argv, argc); // 解析Java的main函数的参数
     CHECK_EXCEPTION_NULL_LEAVE(mainArgs);
 
     /* Invoke main method. */
-    (*env)->CallStaticVoidMethod(env, mainClass, mainID, mainArgs);
+    (*env)->CallStaticVoidMethod(env, mainClass, mainID, mainArgs); // 执行Java的main函数
 
     /*
      * The launcher's exit code (in the absence of calls to
      * System.exit) will be non-zero if main threw an exception.
      */
     ret = (*env)->ExceptionOccurred(env) == NULL ? 0 : 1;
-    LEAVE();
+    LEAVE(); // 退出JVM
 }
 
 /*
@@ -736,7 +736,7 @@ SetClassPath(const char *s)
                        - 2 /* strlen("%s") */
                        + JLI_StrLen(s));
     sprintf(def, format, s);
-    AddOption(def, NULL);
+    AddOption(def, NULL); // 如：构造-Djava.class.path=.:/home/hulk/Documents/eclipse_workspace/jdk8-jdk8-b132/1demo
     if (s != orig)
         JLI_MemFree((char *) s);
 }
@@ -773,7 +773,7 @@ SelectVersion(int argc, char **argv, char **main_class)
      * with the value passed through the environment (if any) and
      * simply return.
      */
-    if ((env_in = getenv(ENV_ENTRY)) != NULL) {
+    if ((env_in = getenv(ENV_ENTRY)) != NULL) { // 从环境变量(_JAVA_VERSION_SET)读Java版本
         if (*env_in != '\0')
             *main_class = JLI_StringDup(env_in);
         return;
@@ -797,7 +797,7 @@ SelectVersion(int argc, char **argv, char **main_class)
      * the Windows platform specific routine ExecJRE (in java_md.c).
      * Changes here should be reproduced there.
      */
-    new_argv = JLI_MemAlloc((argc + 1) * sizeof(char*));
+    new_argv = JLI_MemAlloc((argc + 1) * sizeof(char*)); // 从命令行参数读Java版本
     new_argv[0] = argv[0];
     new_argp = &new_argv[1];
     argc--;
@@ -856,7 +856,7 @@ SelectVersion(int argc, char **argv, char **main_class)
      * containing the command line information.  It's a convenient way to carry
      * this data around.
      */
-    if (jarflag && operand) {
+    if (jarflag && operand) { // 从jar的manifest中读Java版本
         if ((res = JLI_ParseManifest(operand, &info)) != 0) {
             if (res == -1)
                 JLI_ReportErrorMessage(JAR_ERROR2, operand);
@@ -885,7 +885,7 @@ SelectVersion(int argc, char **argv, char **main_class)
     /*
      * Passing on splash screen info in environment variables
      */
-    if (splash_file_name && !headlessflag) {
+    if (splash_file_name && !headlessflag) { // 将闪屏信息写入环境变量
         char* splash_file_entry = JLI_MemAlloc(JLI_StrLen(SPLASH_FILE_ENV_ENTRY "=")+JLI_StrLen(splash_file_name)+1);
         JLI_StrCpy(splash_file_entry, SPLASH_FILE_ENV_ENTRY "=");
         JLI_StrCat(splash_file_entry, splash_file_name);
@@ -902,7 +902,7 @@ SelectVersion(int argc, char **argv, char **main_class)
      * The JRE-Version and JRE-Restrict-Search values (if any) from the
      * manifest are overwritten by any specified on the command line.
      */
-    if (version != NULL)
+    if (version != NULL) // 用命令行参数覆盖manifest的JRE-Version和JRE-Restrict-Search的值
         info.jre_version = version;
     if (restrict_search != -1)
         info.jre_restrict_search = restrict_search;
@@ -918,7 +918,7 @@ SelectVersion(int argc, char **argv, char **main_class)
      * If no version selection information is found either on the command
      * line or in the manifest, simply return.
      */
-    if (info.jre_version == NULL) {
+    if (info.jre_version == NULL) { // 没有从命令行参数或者manifest中提取到jre版本，则直接返回
         JLI_FreeManifest();
         JLI_MemFree(new_argv);
         return;
@@ -927,7 +927,7 @@ SelectVersion(int argc, char **argv, char **main_class)
     /*
      * Check for correct syntax of the version specification (JSR 56).
      */
-    if (!JLI_ValidVersionString(info.jre_version)) {
+    if (!JLI_ValidVersionString(info.jre_version)) { // 处理JSR 56
         JLI_ReportErrorMessage(SPC_ERROR1, info.jre_version);
         exit(1);
     }
@@ -1901,7 +1901,7 @@ ContinueInNewThread(InvocationFunctions* ifn, jlong threadStackSize,
       args.what = what;
       args.ifn = *ifn;
 
-      rslt = ContinueInNewThread0(JavaMain, threadStackSize, (void*)&args);
+      rslt = ContinueInNewThread0(JavaMain, threadStackSize, (void*)&args); // 创建线程，执行Java的Main函数
       /* If the caller has deemed there is an error we
        * simply return that, otherwise we return the value of
        * the callee
