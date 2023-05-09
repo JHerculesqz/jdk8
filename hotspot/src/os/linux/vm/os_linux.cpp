@@ -828,7 +828,7 @@ static void *java_start(Thread *thread) {
   }
 
   // thread_id is kernel thread id (similar to Solaris LWP id)
-  osthread->set_thread_id(os::Linux::gettid());
+  osthread->set_thread_id(os::Linux::gettid()); // 记录线程Id
 
   if (UseNUMA) {
     int lgrp_id = os::numa_get_group_id();
@@ -851,13 +851,13 @@ static void *java_start(Thread *thread) {
     sync->notify_all();
 
     // wait until os::start_thread()
-    while (osthread->get_state() == INITIALIZED) {
+    while (osthread->get_state() == INITIALIZED) {  // 就是Java线程的NEW状态。只有进入RUNNABLE状态，才会往下走
       sync->wait(Mutex::_no_safepoint_check_flag);
     }
   }
 
   // call one more level start routine
-  thread->run();
+  thread->run();  // 执行run方法
 
   return 0;
 }
@@ -866,7 +866,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type, size_t stack_size) {
   assert(thread->osthread() == NULL, "caller responsible");
 
   // Allocate the OSThread object
-  OSThread* osthread = new OSThread(NULL, NULL);
+  OSThread* osthread = new OSThread(NULL, NULL); // OSThread记录了Java线程和内核线程的对应关系
   if (osthread == NULL) {
     return false;
   }
@@ -877,7 +877,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type, size_t stack_size) {
   // Initial state is ALLOCATED but not INITIALIZED
   osthread->set_state(ALLOCATED);
 
-  thread->set_osthread(osthread);
+  thread->set_osthread(osthread); // 将OSThread和Java线程关联
 
   // init thread attributes
   pthread_attr_t attr;
@@ -931,7 +931,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type, size_t stack_size) {
     }
 
     pthread_t tid;
-    int ret = pthread_create(&tid, &attr, (void* (*)(void*)) java_start, thread);
+    int ret = pthread_create(&tid, &attr, (void* (*)(void*)) java_start, thread); // 创建Java线程对应的内核线程
 
     pthread_attr_destroy(&attr);
 
@@ -947,13 +947,13 @@ bool os::create_thread(Thread* thread, ThreadType thr_type, size_t stack_size) {
     }
 
     // Store pthread info into the OSThread
-    osthread->set_pthread_id(tid);
+    osthread->set_pthread_id(tid); // 记录线程Id
 
     // Wait until child thread is either initialized or aborted
     {
       Monitor* sync_with_child = osthread->startThread_lock();
       MutexLockerEx ml(sync_with_child, Mutex::_no_safepoint_check_flag);
-      while ((state = osthread->get_state()) == ALLOCATED) {
+      while ((state = osthread->get_state()) == ALLOCATED) { // C++侧能看到的线程状态
         sync_with_child->wait(Mutex::_no_safepoint_check_flag);
       }
     }
@@ -964,7 +964,7 @@ bool os::create_thread(Thread* thread, ThreadType thr_type, size_t stack_size) {
   }
 
   // Aborted due to thread limit being reached
-  if (state == ZOMBIE) {
+  if (state == ZOMBIE) { // C++侧能看到的线程状态
       thread->set_osthread(NULL);
       delete osthread;
       return false;

@@ -459,9 +459,9 @@ void Thread::start(Thread* thread) {
       // exact thread state at that time. It could be in MONITOR_WAIT or
       // in SLEEPING or some other state.
       java_lang_Thread::set_thread_status(((JavaThread*)thread)->threadObj(),
-                                          java_lang_Thread::RUNNABLE);
+                                          java_lang_Thread::RUNNABLE); // 设置Java线程的状态为RUNNABLE
     }
-    os::start_thread(thread);
+    os::start_thread(thread); // 启动原生线程，目的是改变线程状态
   }
 }
 
@@ -1556,7 +1556,7 @@ void JavaThread::block_if_vm_exited() {
 static void compiler_thread_entry(JavaThread* thread, TRAPS);
 
 JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) :
-  Thread()
+  Thread() // Thread构造函数，初始化了Thread类很多属性
 #if INCLUDE_ALL_GCS
   , _satb_mark_queue(&_satb_mark_queue_set),
   _dirty_card_queue(&_dirty_card_queue_set)
@@ -1565,15 +1565,15 @@ JavaThread::JavaThread(ThreadFunction entry_point, size_t stack_sz) :
   if (TraceThreadEvents) {
     tty->print_cr("creating thread %p", this);
   }
-  initialize();
+  initialize(); // 初始化JavaThread各种属性
   _jni_attach_state = _not_attaching_via_jni;
-  set_entry_point(entry_point);
+  set_entry_point(entry_point); // 将回调run方法的入口点注册进去
   // Create the native thread itself.
   // %note runtime_23
   os::ThreadType thr_type = os::java_thread;
-  thr_type = entry_point == &compiler_thread_entry ? os::compiler_thread :
-                                                     os::java_thread;
-  os::create_thread(this, thr_type, stack_sz);
+  thr_type = entry_point == &compiler_thread_entry ? os::compiler_thread : // 是否为编译线程
+                                                     os::java_thread;      // 是否为普通Java线程
+  os::create_thread(this, thr_type, stack_sz);                             // 创建Java线程对应的native线程，调用pthread_create
   _safepoint_visible = false;
   // The _osthread may be NULL here because we ran out of memory (too many threads active).
   // We need to throw and OutOfMemoryError - however we cannot do this here because the caller
@@ -1636,18 +1636,18 @@ JavaThread::~JavaThread() {
 // The first routine called by a new Java thread
 void JavaThread::run() {
   // initialize thread-local alloc buffer related fields
-  this->initialize_tlab();
+  this->initialize_tlab(); // 初始化TLAB
 
   // used to test validitity of stack trace backs
-  this->record_base_of_stack_pointer();
+  this->record_base_of_stack_pointer(); // 记录栈的基地址
 
   // Record real stack base and size.
-  this->record_stack_base_and_size();
+  this->record_stack_base_and_size(); // 初始化OSThread的栈帧
 
   // Initialize thread local storage; set before calling MutexLocker
-  this->initialize_thread_local_storage();
+  this->initialize_thread_local_storage(); // 初始化LocalStorage
 
-  this->create_stack_guard_pages();
+  this->create_stack_guard_pages(); // 创建stack_guard_pages
 
   this->cache_global_variables();
 
@@ -1662,7 +1662,7 @@ void JavaThread::run() {
 
   // This operation might block. We call that after all safepoint checks for a new thread has
   // been completed.
-  this->set_active_handles(JNIHandleBlock::allocate_block());
+  this->set_active_handles(JNIHandleBlock::allocate_block()); // 设置JNIHandleBlock
 
   if (JvmtiExport::should_post_thread_life()) {
     JvmtiExport::post_thread_start(this);
@@ -1676,7 +1676,7 @@ void JavaThread::run() {
 
   // We call another function to do the rest so we are sure that the stack addresses used
   // from there will be lower than the stack base just computed
-  thread_main_inner();
+  thread_main_inner(); // 回调Java线程的run方法，执行完成后销毁当前实例
 
   // Note, thread is no longer valid at this point!
 }
@@ -1696,13 +1696,13 @@ void JavaThread::thread_main_inner() {
       this->set_native_thread_name(this->get_thread_name());
     }
     HandleMark hm(this);
-    this->entry_point()(this, this);
+    this->entry_point()(this, this); // 回调JDK的run方法
   }
 
   DTRACE_THREAD_PROBE(stop, this);
 
-  this->exit(false);
-  delete this;
+  this->exit(false); // 退出线程
+  delete this;  // 销毁线程
 }
 
 

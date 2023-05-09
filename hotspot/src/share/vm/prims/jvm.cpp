@@ -2800,7 +2800,7 @@ void jio_print(const char* s) {
 // instance), and are very unlikely.  Because IsAlive needs to be fast and its
 // implementation is local to this file, we always lock Threads_lock for that one.
 
-static void thread_entry(JavaThread* thread, TRAPS) {
+static void thread_entry(JavaThread* thread, TRAPS) { // JVM回调JDK的Thread.run方法
   HandleMark hm(THREAD);
   Handle obj(THREAD, thread->threadObj());
   JavaValue result(T_VOID);
@@ -2827,7 +2827,7 @@ JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
   {
     // Ensure that the C++ Thread and OSThread structures aren't freed before
     // we operate.
-    MutexLocker mu(Threads_lock);
+    MutexLocker mu(Threads_lock); // 获得锁
 
     // Since JDK 5 the java.lang.Thread threadStatus is used to prevent
     // re-starting an already started thread, so we should usually find
@@ -2836,7 +2836,7 @@ JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
     // (with its JavaThread set) and the update to its threadStatus, so we
     // have to check for this
     if (java_lang_Thread::thread(JNIHandles::resolve_non_null(jthread)) != NULL) {
-      throw_illegal_thread_state = true;
+      throw_illegal_thread_state = true; // 如果jthread不为空，则说明该线程已经启动过了，抛出异常
     } else {
       // We could also check the stillborn flag to see if this thread was already stopped, but
       // for historical reasons we let the thread detect that itself when it starts running
@@ -2848,7 +2848,7 @@ JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
       // size_t (an unsigned type), so avoid passing negative values which would
       // result in really large stacks.
       size_t sz = size > 0 ? (size_t) size : 0;
-      native_thread = new JavaThread(&thread_entry, sz);
+      native_thread = new JavaThread(&thread_entry, sz); // 创建native线程，thread_entry就是后续会执行的回调
 
       // At this point it may be possible that no osthread was created for the
       // JavaThread due to lack of memory. Check for this situation and throw
@@ -2856,9 +2856,9 @@ JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
       // that we only grab the lock if the thread was created successfully -
       // then we can also do this check and throw the exception in the
       // JavaThread constructor.
-      if (native_thread->osthread() != NULL) {
+      if (native_thread->osthread() != NULL) {  // 如果native线程不为空，则
         // Note: the current thread is not being used within "prepare".
-        native_thread->prepare(jthread);
+        native_thread->prepare(jthread); // prepare方法会建立Java线程和native线程关联，将Java线程优先级映射为原声线程优先级
       }
     }
   }
@@ -2881,7 +2881,7 @@ JVM_ENTRY(void, JVM_StartThread(JNIEnv* env, jobject jthread))
               "unable to create new native thread");
   }
 
-  Thread::start(native_thread);
+  Thread::start(native_thread); // 触发Thread类的start方法
 
 JVM_END
 
